@@ -1,36 +1,73 @@
 from aiogram import Router, types
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.search_service import SearchService
 from src.database.repositories import ProductRepository, ProductFileRepository
 from src.core.utils import esc
 from src.keyboards.user import get_main_menu_keyboard
+from src.handlers.states import SearchProduct
 
 router = Router()
 
 
-@router.message()
-async def universal_search(message: types.Message, session: AsyncSession):
+# Обработчик текстовых сообщений в состоянии поиска
+@router.message(SearchProduct.waiting_query)
+async def process_search_query(message: types.Message, session: AsyncSession, state: FSMContext):
     """
-    universal handler for searching products by name
-    working with every text message
+    Обработчик поискового запроса в состоянии поиска
     """
     if not message.text:
+        await message.answer(
+            "🔍 Пожалуйста, введите текстовый запрос для поиска.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(
+                    text="⬅️ Главное меню",
+                    callback_data="menu:main"
+                )
+            ]])
+        )
         return
         
     query = message.text.strip()
     if not query:
+        await message.answer(
+            "🔍 Запрос не может быть пустым. Попробуйте еще раз.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(
+                    text="⬅️ Главное меню",
+                    callback_data="menu:main"
+                )
+            ]])
+        )
         return
-    
+
+    # Очищаем состояние
+    await state.clear()
+
     search_service = SearchService(session)
     search_results = await search_service.search_products(query)
     
     if not search_results:
         await message.answer(
-            f"По запросу '{esc(query)}' ничего не найдено.\n"
+            f"🔍 По запросу '{esc(query)}' ничего не найдено.\n"
             "Попробуйте другой запрос или воспользуйтесь меню каталога.",
-            reply_markup=get_main_menu_keyboard()
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(
+                    text="🔍 Новый поиск", 
+                    callback_data="search:new"
+                ),
+                types.InlineKeyboardButton(
+                    text="📂 Каталог", 
+                    callback_data="menu:catalog"
+                )
+            ], [
+                types.InlineKeyboardButton(
+                    text="⬅️ Главное меню",
+                    callback_data="menu:main"
+                )
+            ]])
         )
         return
     
@@ -80,11 +117,17 @@ async def universal_search(message: types.Message, session: AsyncSession):
     )
 
 
+# Универсальный поиск отключен - теперь поиск работает только через команду /search и кнопки меню
+
+
 @router.callback_query(lambda c: c.data == 'search:new')
-async def new_search(callback: types.CallbackQuery):
+async def new_search(callback: types.CallbackQuery, state: FSMContext):
     """
     Обработчик кнопки "Новый поиск"
     """
+    # Устанавливаем состояние ожидания поискового запроса
+    await state.set_state(SearchProduct.waiting_query)
+    
     if callback.message and isinstance(callback.message, types.Message):
         await callback.message.edit_text(
             "🔍 <b>Поиск продуктов</b>\n\n"

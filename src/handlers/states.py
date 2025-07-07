@@ -21,3 +21,10 @@ class AddProd(StatesGroup):
     waiting_description = State()
 
 
+class SearchProduct(StatesGroup):
+    """
+    Состояние для поиска продуктов
+    """
+    waiting_query = State()
+
+

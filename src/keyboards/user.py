@@ -8,6 +8,7 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     Returns: Markup of main menu buttons
     """
     builder = InlineKeyboardBuilder()
+    builder.button(text='🔍 Поиск продукции', callback_data='menu:search')
     builder.button(text='Описание возможностей', callback_data='menu:features')
     builder.button(text='Каталог Продукции', callback_data='menu:catalog')
     builder.button(text='Контактная информация', callback_data='menu:contact')
