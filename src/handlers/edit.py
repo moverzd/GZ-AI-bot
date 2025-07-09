@@ -4,28 +4,36 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.filters.admin import AdminFilter
-from src.keyboards.admin import get_edit_field_keyboard
 from src.services.product_service import ProductService
 from src.handlers.states import EditCard
+from src.core.utils import esc
+from src.keyboards.admin import get_edit_field_keyboard
 
 router = Router()
 router.message.filter(AdminFilter())
 
-@router.message(Command('edit'))
-assync def cmd_edit(message: types.Message, state: FSMContext, command:
+@router.message(Command('edit_product'))
+async def cmd_edit(message: types.Message, state: FSMContext, command:
                     CommandObject, session: AsyncSession):
     """
-    /edit <id>
+    /edit <id> или /edit_product <id> - редактирование продукта
     """
 
     if not command.args:
-        await message.answer("❌ Не указан ID продукта. Используйте: /edit <id продукта>")
+        await message.answer(
+            "Не указан ID продукта.\n\n"
+            "<b>Использование:</b>\n"
+            "• <code>/edit_product 123</code>\n"
+            "• <code>/edit 123</code>\n\n"
+            "💡 ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+            parse_mode="HTML"
+        )
         return
     
     try:
         product_id = int(command.args)
     except ValueError:
-        await message.answer("❌ Некорректный ID продукта. Используйте число.")
+        await message.answer("Некорректный ID продукта. Используйте число.")
         return
     
     # Получаем информацию о продукте
@@ -33,7 +41,7 @@ assync def cmd_edit(message: types.Message, state: FSMContext, command:
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
-        await message.answer(f"❌ Продукт с ID {product_id} не найден или удален.")
+        await message.answer(f"Продукт с ID {product_id} не найден или удален.")
         return
     
     # Сохраняем ID продукта в состоянии
@@ -41,7 +49,7 @@ assync def cmd_edit(message: types.Message, state: FSMContext, command:
     
     # Показываем меню выбора поля для редактирования
     await message.answer(
-        f"📝 Редактирование продукта: <b>{product_info['name']}</b>\n\n"
+        f"Редактирование продукта: <b>{product_info['name']}</b>\n\n"
         "Выберите поле для редактирования:",
         reply_markup=get_edit_field_keyboard(product_id),
         parse_mode="HTML"
@@ -49,14 +57,26 @@ assync def cmd_edit(message: types.Message, state: FSMContext, command:
 
 
 @router.callback_query(lambda c: c.data.startswith("field:"))
-async def choose_field(callback: types.CallbackQuery, state: FSMContext):
+async def choose_field(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     """
     Обработчик выбора поля для редактирования
     """
+    if not callback.data or not callback.message:
+        await callback.answer("Ошибка обработки")
+        return
+        
     # Парсим callback_data: field:имя_поля:id_продукта
     parts = callback.data.split(':')
+    if len(parts) < 3:
+        await callback.answer("Неверный формат данных")
+        return
+        
     field_name = parts[1]
-    product_id = int(parts[2])
+    try:
+        product_id = int(parts[2])
+    except ValueError:
+        await callback.answer("Неверный ID продукта")
+        return
     
     # Сохраняем информацию в состоянии
     await state.update_data(field=field_name, product_id=product_id)
@@ -65,17 +85,43 @@ async def choose_field(callback: types.CallbackQuery, state: FSMContext):
     # Определяем понятное название поля
     field_names = {
         "name": "название",
-        "short_desc": "краткое описание",
         "description": "полное описание",
         "advantages": "преимущества",
-        "notes": "примечания",
+        "notes": "расход",
         "package": "упаковку"
     }
     
     field_display = field_names.get(field_name, field_name)
     
+    # Получаем информацию о продукте для отображения текущего значения
+    product_service = ProductService(session)
+    product_info = await product_service.get_product_by_id(product_id)
+    
+    if not product_info:
+        await callback.message.edit_text("Продукт не найден или удален")
+        await callback.answer()
+        return
+    
+    # Получаем текущее значение поля
+    current_value = ""
+    if field_name == "name":
+        current_value = product_info.get("name", "")
+    elif field_name in ["description", "advantages", "notes", "package"]:
+        # Эти поля берем из spheres_info (первая сфера)
+        spheres_info = product_info.get("spheres_info", [])
+        if spheres_info:
+            current_value = spheres_info[0].get(field_name, "")
+    
+    current_text = f"<b>Текущее значение:</b> {esc(current_value)}" if current_value else "<b>Текущее значение:</b> не задано"
+    
     # Запрашиваем новое значение
-    await callback.message.answer(f"Введите новое {field_display} для продукта:")
+    await callback.message.edit_text(
+        f"<b>Редактирование поля:</b> {field_display}\n"
+        f"<b>Продукт:</b> {esc(product_info['name'])} (ID: {product_id})\n\n"
+        f"{current_text}\n\n"
+        f"Введите новое значение для поля <b>\"{field_display}\"</b>:",
+        parse_mode="HTML"
+    )
     await callback.answer()
 
 @router.message(EditCard.waiting_value)
@@ -83,22 +129,42 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
     """
     Сохранение нового значения поля продукта
     """
+    if not message.text:
+        await message.answer("Введите текстовое значение:")
+        return
+    
     # Получаем данные из состояния
     data = await state.get_data()
     product_id = data.get("product_id")
     field = data.get("field")
     
+    if not product_id or not field:
+        await message.answer("Ошибка состояния. Начните редактирование заново.")
+        await state.clear()
+        return
+    
     # Получаем новое значение
-    new_value = message.text
+    new_value = message.text.strip()
     
     # Обновляем значение в базе данных
     product_service = ProductService(session)
-    success = await product_service.update_product_field(product_id, field, new_value)
+    success = await product_service.update_product_field(int(product_id), str(field), new_value)
     
-    if success:
-        await message.answer(f"✅ Значение поля успешно обновлено!")
+    if success:       # Получаем обновленную информацию о продукте
+        updated_product_info = await product_service.get_product_by_id(int(product_id))
+        
+        if updated_product_info:
+            # Показываем сообщение об успешном обновлении и возвращаем к меню редактирования
+            await message.answer(
+                f"✅ Значение поля успешно обновлено!\n\n"
+                f"Продолжить редактирование продукта: <b>{esc(updated_product_info['name'])}</b>",
+                reply_markup=get_edit_field_keyboard(int(product_id)),
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer("✅ Значение поля успешно обновлено!")
     else:
-        await message.answer("❌ Произошла ошибка при обновлении поля.")
+        await message.answer("Произошла ошибка при обновлении поля.")
     
     # Сбрасываем состояние
     await state.clear()

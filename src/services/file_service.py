@@ -1,12 +1,12 @@
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.repositories import ProductFileRepository
+from src.database.product_file_repositories import ProductFileRepository
 from src.database.models import ProductFile
 
-class FileService:
+class FileServiceFileService:
     """
-    service for files management
+    Сервис менеджмента файлов
     """
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -14,7 +14,7 @@ class FileService:
 
     async def save_product_image(self, product_id: int, file_id: str, is_main: bool = False) -> ProductFile:
         """
-        Saving image for product
+        Сохранить фото продукта
         """
         ordering=0 if is_main else 1
         return await self.file_repo.add_file(
@@ -26,7 +26,7 @@ class FileService:
 
     async def save_product_document(self, product_id: int, file_id: str) -> ProductFile:
         """
-        saving product documents
+        Сохранить документацию для продукта 
         """
         return await self.file_repo.add_file(
             product_id = product_id,
@@ -37,7 +37,7 @@ class FileService:
     
 async def get_product_files(self, product_id: int, file_type: Optional[str] = None) -> List[ProductFile]:
         """
-        get all files from product
+        получение файлов продуктов
         """
         from sqlalchemy import select
         

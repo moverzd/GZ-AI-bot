@@ -3,25 +3,30 @@ from aiogram.filters import StateFilter
 from aiogram import F
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.services.product_service import CategoryService, ProductService, SphereService
 from src.keyboards.user import get_main_menu_keyboard
 from src.core.utils import esc
 
 router = Router()
 
+"""
+Логика каталогов по продукции:
+- по категориям
+- по сфере применения
+"""
+
 @router.callback_query(lambda c: c.data == 'menu:catalog')
 async def catalog_menu(callback: types.CallbackQuery):
     """
-    Show catalog menu with options to browse by categories or spheres
+    Показывает выбор между категориями или сферами
     """
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
-            text="🗂️ По категориям продукции",
+            text="По категориям продукции",
             callback_data="catalog:categories"
         )],
         [types.InlineKeyboardButton(
-            text="🎯 По сферам применения",
+            text="По сферам применения",
             callback_data="catalog:spheres"
         )],
         [types.InlineKeyboardButton(
@@ -36,7 +41,7 @@ async def catalog_menu(callback: types.CallbackQuery):
             if callback.message.photo or callback.message.document or callback.message.video:
                 # Для сообщений с медиа отправляем новое сообщение
                 await callback.message.answer(
-                    "📂 <b>Каталог продукции</b>\n\n"
+                    "<b>Каталог продукции</b>\n\n"
                     "Выберите способ просмотра каталога:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -49,7 +54,7 @@ async def catalog_menu(callback: types.CallbackQuery):
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
-                    "📂 <b>Каталог продукции</b>\n\n"
+                    "<b>Каталог продукции</b>\n\n"
                     "Выберите способ просмотра каталога:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -63,22 +68,23 @@ async def catalog_menu(callback: types.CallbackQuery):
                 pass
             await callback.bot.send_message(
                 chat_id=callback.message.chat.id,
-                text="📂 <b>Каталог продукции</b>\n\n"
+                text="<b>Каталог продукции</b>\n\n"
                      "Выберите способ просмотра каталога:",
                 reply_markup=keyboard,
                 parse_mode='HTML'
             )
     await callback.answer()
 
+
 @router.callback_query(lambda c: c.data == 'catalog:categories')
 async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
     """
-    Show all categories
+    - Извлечение id категории из callback_data, 
+    - полуечение всех продуктов из категории
     """
     category_service = CategoryService(session)
     categories = await category_service.get_all_categories()
 
-    # Keyboard generation
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
 
     for category in categories:
@@ -88,7 +94,6 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
         )
         keyboard.inline_keyboard.append([button])
     
-    # Button back to catalog menu
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
             text="⬅️ Назад к выбору каталога",
@@ -102,7 +107,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
             if callback.message.photo or callback.message.document or callback.message.video:
                 # Для сообщений с медиа отправляем новое сообщение
                 await callback.message.answer(
-                    "🗂️ <b>Категории продукции:</b>\n\n"
+                    "<b>Категории продукции:</b>\n\n"
                     "Выберите категорию:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -115,7 +120,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
-                    "🗂️ <b>Категории продукции:</b>\n\n"
+                    "<b>Категории продукции:</b>\n\n"
                     "Выберите категорию:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -123,7 +128,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
         except Exception as e:
             # В случае ошибки отправляем новое сообщение
             await callback.message.answer(
-                "🗂️ <b>Категории продукции:</b>\n\n"
+                "<b>Категории продукции:</b>\n\n"
                 "Выберите категорию:",
                 reply_markup=keyboard,
                 parse_mode='HTML'
@@ -133,12 +138,12 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
 @router.callback_query(lambda c: c.data == 'catalog:spheres')
 async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
     """
-    Show all spheres
+    - Извлечение id сферы из callback_data, 
+    - полуечение всех продуктов из сферы
     """
     sphere_service = SphereService(session)
     spheres = await sphere_service.get_all_spheres()
 
-    # Keyboard generation
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
 
     for sphere in spheres:
@@ -148,7 +153,6 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
         )
         keyboard.inline_keyboard.append([button])
     
-    # Button back to catalog menu
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
             text="⬅️ Назад к выбору каталога",
@@ -162,7 +166,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
             if callback.message.photo or callback.message.document or callback.message.video:
                 # Для сообщений с медиа отправляем новое сообщение
                 await callback.message.answer(
-                    "🎯 <b>Сферы применения:</b>\n\n"
+                    "<b>Сферы применения:</b>\n\n"
                     "Выберите сферу применения:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -175,7 +179,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
-                    "🎯 <b>Сферы применения:</b>\n\n"
+                    "<b>Сферы применения:</b>\n\n"
                     "Выберите сферу применения:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -183,7 +187,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
         except Exception as e:
             # В случае ошибки отправляем новое сообщение
             await callback.message.answer(
-                "🎯 <b>Сферы применения:</b>\n\n"
+                "<b>Сферы применения:</b>\n\n"
                 "Выберите сферу применения:",
                 reply_markup=keyboard,
                 parse_mode='HTML'
@@ -192,7 +196,9 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
 
 @router.callback_query(lambda c: c.data and c.data.startswith('category:'))
 async def show_category_products(callback: types.CallbackQuery, session: AsyncSession):
-    """Show products in selected category"""
+    """
+    Показать список продуктов из выбранной категории
+    """
     if not callback.data:
         return
         
@@ -250,7 +256,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
 
     for product, _ in products:
         button = types.InlineKeyboardButton(
-            text=str(product.name),  # Преобразуем в строку
+            text=f"ID: {product.id} | {str(product.name)}",  # Добавляем ID к названию
             callback_data=f"product:{product.id}:category:{category_id}"
         )
         keyboard.inline_keyboard.append([button])
@@ -294,7 +300,11 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
 @router.callback_query(lambda c: c.data and c.data.startswith('product:'))
 async def show_product_details(callback: types.CallbackQuery, session: AsyncSession):
     """
-    show detailed info
+    Парсинг callback_data для определения источника
+    Получение полной информации о продукте
+    Форматирование сообщения в HTML разметку
+    Добавление кнопки документов
+    Кнопка назад, в зависимости от источника
     """    
     if not callback.data:
         return
@@ -349,7 +359,8 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
         await callback.answer()
         return
     
-    text = f"<b>{esc(product_info['name'])}</b>\n\n"
+    text = f"<b>{esc(product_info['name'])}</b>\n"
+    text += f"<b>ID:</b> {product_info['id']}\n\n"
     
     # Категория (обязательное поле)
     category_name = "Не указана"
@@ -452,7 +463,9 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
 
 @router.callback_query(lambda c: c.data and c.data.startswith('sphere:'))
 async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSession):
-    """Show products in selected sphere"""
+    """
+    Показать карточку продукта из списка продукции по сферам
+    """
     if not callback.data:
         return
         
@@ -510,7 +523,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
 
     for product, _ in products:
         button = types.InlineKeyboardButton(
-            text=str(product.name),  # Преобразуем в строку
+            text=f"ID: {product.id} | {str(product.name)}",  # Добавляем ID к названию
             callback_data=f"product:{product.id}:sphere:{sphere_id}"
         )
         keyboard.inline_keyboard.append([button])

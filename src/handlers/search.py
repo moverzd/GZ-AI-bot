@@ -4,23 +4,31 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.search_service import SearchService
-from src.database.repositories import ProductRepository, ProductFileRepository
+from src.database.repositories import ProductRepository 
+from src.database.product_file_repositories import ProductFileRepository
 from src.core.utils import esc
 from src.keyboards.user import get_main_menu_keyboard
 from src.handlers.states import SearchProduct
 
 router = Router()
 
+"""
+Функциональность поиска продуктов по названию.
 
-# Обработчик текстовых сообщений в состоянии поиска
+"""
+
 @router.message(SearchProduct.waiting_query)
 async def process_search_query(message: types.Message, session: AsyncSession, state: FSMContext):
     """
-    Обработчик поискового запроса в состоянии поиска
+    Обработка поискового запроса
+    - Проверка на отправку текста от пользователя
+    - очистка FSM состояния
+    - SearchService для поиска
+    - 5 результатов поиска
     """
     if not message.text:
         await message.answer(
-            "🔍 Пожалуйста, введите текстовый запрос для поиска.",
+            "Пожалуйста, введите текстовый запрос для поиска.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(
                     text="⬅️ Главное меню",
@@ -33,7 +41,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     query = message.text.strip()
     if not query:
         await message.answer(
-            "🔍 Запрос не может быть пустым. Попробуйте еще раз.",
+            "Запрос не может быть пустым. Попробуйте еще раз.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(
                     text="⬅️ Главное меню",
@@ -51,7 +59,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     
     if not search_results:
         await message.answer(
-            f"🔍 По запросу '{esc(query)}' ничего не найдено.\n"
+            f"По запросу '{esc(query)}' ничего не найдено.\n"
             "Попробуйте другой запрос или воспользуйтесь меню каталога.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(
@@ -59,7 +67,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
                     callback_data="search:new"
                 ),
                 types.InlineKeyboardButton(
-                    text="📂 Каталог", 
+                    text="🗃 Каталог", 
                     callback_data="menu:catalog"
                 )
             ], [
@@ -73,13 +81,13 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     
     # Создаем список кнопок с найденными продуктами
     buttons = []
-    for product, main_image in search_results[:10]:  # Показываем до 10 результатов
+    for product, main_image in search_results[:5]:  # Показываем до 5 результатов
         # Получаем название продукта и преобразуем в строку
         product_name = str(product.name) if product.name is not None else "Без названия"
         # Показываем полное название без сокращений
         buttons.append([
             types.InlineKeyboardButton(
-                text=f"📦 {product_name}",
+                text=f"ID: {product.id} | {product_name}",
                 # Добавляем информацию об источнике (search) и запросе
                 callback_data=f"product:{product.id}:search:{query}"
             )
@@ -88,11 +96,11 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     # Добавляем кнопки навигации
     buttons.append([
         types.InlineKeyboardButton(
-            text="🔍 Новый поиск", 
+                text="🔍 Новый поиск", 
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
-            text="📂 Каталог", 
+            text="🗃 Каталог", 
             callback_data="menu:catalog"
         )
     ])
@@ -106,7 +114,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     
     # Показываем список найденных продуктов
-    result_text = f"🔍 <b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
+    result_text = f"<b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
     result_text += f"Найдено продуктов: <b>{len(search_results)}</b>\n"
     result_text += "Выберите продукт для просмотра подробной информации:"
     
@@ -117,20 +125,19 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     )
 
 
-# Универсальный поиск отключен - теперь поиск работает только через команду /search и кнопки меню
-
-
 @router.callback_query(lambda c: c.data == 'search:new')
 async def new_search(callback: types.CallbackQuery, state: FSMContext):
     """
-    Обработчик кнопки "Новый поиск"
+    Новый запрос на поиск
+    Перевод бота в состояние ожидания нового запрсоа
+    Демонстрация инструкции для ввода запроса
     """
     # Устанавливаем состояние ожидания поискового запроса
     await state.set_state(SearchProduct.waiting_query)
     
     if callback.message and isinstance(callback.message, types.Message):
         await callback.message.edit_text(
-            "🔍 <b>Поиск продуктов</b>\n\n"
+            "<b>Поиск продуктов</b>\n\n"
             "Введите название продукта или его часть для поиска:",
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -169,12 +176,12 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
                 callback_data="search:new"
             ),
             types.InlineKeyboardButton(
-                text="📂 Каталог", 
+                text="🗃 Каталог", 
                 callback_data="menu:catalog"
             )
         ], [
             types.InlineKeyboardButton(
-                text="⬅️ В главное меню", 
+                text="В главное меню", 
                 callback_data="menu:main"
             )
         ]])
@@ -213,13 +220,13 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     
     # Создаем список кнопок с найденными продуктами
     buttons = []
-    for product, main_image in search_results[:10]:  # Показываем до 10 результатов
+    for product, main_image in search_results[:5]:  # Показываем до 10 результатов
         # Получаем название продукта и преобразуем в строку
         product_name = str(product.name) if product.name is not None else "Без названия"
         # Показываем полное название без сокращений
         buttons.append([
             types.InlineKeyboardButton(
-                text=f"📦 {product_name}",
+                text=f"{product_name}",
                 # Добавляем информацию об источнике (search) и запросе
                 callback_data=f"product:{product.id}:search:{query}"
             )
@@ -232,7 +239,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
-            text="📂 Каталог", 
+            text="🗃 Каталог", 
             callback_data="menu:catalog"
         )
     ])
@@ -246,7 +253,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     
     # Показываем список найденных продуктов
-    result_text = f"🔍 <b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
+    result_text = f" <b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
     result_text += f"Найдено продуктов: <b>{len(search_results)}</b>\n"
     result_text += "Выберите продукт для просмотра подробной информации:"
     

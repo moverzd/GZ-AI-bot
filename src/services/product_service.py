@@ -1,13 +1,14 @@
 from typing import List, Optional, Dict, Tuple, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.repositories import ProductRepository, ProductFileRepository
+from src.database.repositories import ProductRepository
+from src.database.product_file_repositories import ProductFileRepository
 from src.database.models import Product, Category,ProductSphere, Sphere
 from src.core.utils import split_advantages
 
 class CategoryService:
     """
-    Service for working with catogories
+    Сервис категории продукции
     """
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -26,56 +27,50 @@ class CategoryService:
 
 class ProductService:
     """
-    Serivce for working with products  
+    Сервис для продукции
     """
     def __init__(self, session: AsyncSession):
         self.session = session
-        self.product_repo = ProductRepository(session)  # ИСПРАВЛЕНО - правильный репозиторий для продуктов
-        self.file_repo = ProductFileRepository(session)  # ИСПРАВЛЕНО - правильный репозиторий для файлов
+        self.product_repo = ProductRepository(session)  # Используем репозиторий с методом get_by_category
+        self.file_repo = ProductFileRepository(session)  # Репозиторий для работы с файлами
     
     async def get_product_by_id(self, product_id: int) -> Optional[Dict[str, Any]]:
         """
-        get product by id with full information
+        Получаем продукт по его ID с полной информацией
         """
         product = await self.product_repo.get_by_id(product_id)
         if not product:
             return None
 
-        #files 
+        # файлы
         main_image = await self.file_repo.get_main_image(product_id)
         documents = await self.file_repo.get_documents(product_id)
         
-        # Получаем категорию отдельным запросом
+        # Получаем категорию
         from sqlalchemy import select
         category_query = select(Category).where(Category.id == product.category_id)
         category_result = await self.session.execute(category_query)
         category = category_result.scalars().first()
         
-        #spheres
-        spheres_query = select(ProductSphere).where(
-            ProductSphere.product_id == product_id
-        )
+        # Сферы
+        spheres_query = select(ProductSphere).where(ProductSphere.product_id == product_id)
         result = await self.session.execute(spheres_query)
         spheres = result.scalars().all()
 
-        # building object
-        #TODO: FIX container
+        # Собираем объект
         product_info = {
             "id": product.id,
             "name": product.name,
-            "description": None,  # Будем брать из product_sphere.description
-            "category": category,  # Используем отдельно загруженную категорию
+            "description": None,
+            "category": category,
             "main_image": main_image,
             "documents": documents,
             "spheres": []
         }
 
-        # Собираем все описания из сфер
         descriptions = []
         for sphere in spheres:
             advantages = split_advantages(str(sphere.advantages))
-            
-            # Добавляем описание из sphere в общий список
             sphere_desc = str(sphere.description)
             if sphere_desc and sphere_desc.strip() and sphere_desc.lower() not in ['none', 'null', '-']:
                 descriptions.append(sphere_desc)
@@ -88,23 +83,50 @@ class ProductService:
                 "notes": sphere.notes,
                 "package": sphere.package,
             })
-        
-        # Устанавливаем описание продукта из первой сферы
+
         if descriptions:
-            product_info["description"] = descriptions[0]  # Берем первое описание
+            product_info["description"] = descriptions[0]
+        
         return product_info
         
     async def get_products_by_category(self, category_id: int) -> List[Tuple[Product, Optional[str]]]:
         """
-        Get prodcuts by category with images
+        Получаем продукты по категории с изображениями
         """
+        # Вызов метода get_by_category из ProductRepository
         products = await self.product_repo.get_by_category(category_id)
         results = []
+        
+        # Добавляем изображения для каждого продукта
         for product in products:
             main_image = await self.file_repo.get_main_image(getattr(product, 'id'))
-            results.append((product,  main_image))
+            results.append((product, main_image))
+        
         return results
 
+    async def update_product_field(self, product_id: int, field: str, value: str) -> bool:
+        """
+        Обновляет конкретное поле продукта
+        
+        Args:
+            product_id: ID продукта
+            field: Название поля для обновления  
+            value: Новое значение
+            
+        Returns:
+            True если обновление прошло успешно, False иначе
+        """
+        # Поля из таблицы Product  
+        product_fields = ['name']  # убрали short_desc - не редактируем
+        # Поля из таблицы ProductSphere
+        product_sphere_fields = ['description', 'advantages', 'notes', 'package']
+        
+        if field in product_fields:
+            return await self.product_repo.update_product_field(product_id, field, value)
+        elif field in product_sphere_fields:
+            return await self.product_repo.update_product_sphere_field(product_id, field, value)
+        else:
+            return False
 
 class SphereService:
     """
