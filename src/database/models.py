@@ -52,11 +52,15 @@ class ProductFile(Base):
     # CASCADE - if product is_deleted = True : all files will be deleted
     product_id = Column(Integer, ForeignKey('products.id', ondelete= "CASCADE")) 
     file_id = Column(String(512), nullable = False)
-    kind = Column(Enum("image", "video", "doc", name = "filekind"),nullable= False) # NOTE: list of file types right here
+    kind = Column(Enum('image','video','document','presentation','pdf','word','excel','archive','other', name = "filekind"),nullable= False)
     ordering = Column(Integer, nullable = False, default = 0)
     uploaded_by = Column(Integer)  
     uploaded_at = Column(TIMESTAMP)  
     is_deleted = Column(Boolean, nullable = False, default = 0)
+    title = Column(String(255))
+    file_size = Column(Integer)
+    mime_type = Column(String(100))
+    original_filename = Column(String(255))
     product = relationship("Product", back_populates = "files")
 
 

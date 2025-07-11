@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert, update
 from typing import cast
 
-from src.handlers.states import AddProd, DeleteProduct, EditCard
+from src.handlers.states import AddProd, DeleteProduct, EditCard, AddFiles
 from src.database.models import Product, Category, Sphere, ProductSphere, ProductFile
 from src.core.utils import esc
 

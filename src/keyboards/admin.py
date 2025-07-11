@@ -9,10 +9,11 @@ def get_admin_main_menu_keyboard() -> InlineKeyboardMarkup:
         Разметка с админскими кнопками
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="➕ Добавить продукт", callback_data="admin:add_product")
-    builder.button(text="✏️ Отредактировать продукт", callback_data="admin:edit_product")
-    builder.button(text="🗑️ Удалить продукт", callback_data="admin:delete_product")
-    builder.button(text="🏠 Главное меню", callback_data="menu:main")
+    builder.button(text="Добавить продукт", callback_data="admin:add_product")
+    builder.button(text="Отредактировать продукт", callback_data="admin:edit_product")
+    builder.button(text="️Удалить продукт", callback_data="admin:delete_product")
+    builder.button(text="Добавить файлы к продукту", callback_data="admin:add_files")
+    builder.button(text="Главное меню", callback_data="menu:main")
     builder.adjust(1)
     return builder.as_markup()
 

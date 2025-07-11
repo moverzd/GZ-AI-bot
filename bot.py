@@ -14,6 +14,7 @@ from src.handlers.catalog import router as catalog_router
 from src.handlers.search import router as search_router
 from src.handlers.admin import router as admin_router
 from src.handlers.edit import router as edit_router
+from src.handlers.upload_content import router as upload_content_router
 from src.keyboards.user import get_main_menu_keyboard
 from aiogram import Bot, Dispatcher
 
@@ -55,6 +56,7 @@ async def main():
     dp.include_router(search_router) # поисковик
     dp.include_router(admin_router) # админ-панель
     dp.include_router(edit_router) # редактирование
+    dp.include_router(upload_content_router) # загрузка файлов
         
     @dp.message(Command('admin'))
     # Message - класс сообщения, очень много полей у него

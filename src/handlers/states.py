@@ -34,19 +34,25 @@ class AddProd(StatesGroup):
     waiting_package = State()
     waiting_main_photo = State()
 
-
 class SearchProduct(StatesGroup):
     """
     Состояние для поиска продуктов
     """
     waiting_query = State()
 
-
 class DeleteProduct(StatesGroup):
     """
     Удаление продукта
     """
     waiting_product_id = State()  # Ожидание ID продукта для удаления
+
+class AddFiles(StatesGroup):
+    """
+    Добавление файлов к продукту
+    """
+    waiting_product_id = State()  # Ожидание ID продукта
+    waiting_file = State()  # Ожидание файла
+    waiting_title = State()  # Ожидание названия файла
 
 
 

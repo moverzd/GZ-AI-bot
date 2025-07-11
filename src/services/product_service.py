@@ -45,6 +45,8 @@ class ProductService:
         # файлы
         main_image = await self.file_repo.get_main_image(product_id)
         documents = await self.file_repo.get_documents(product_id)
+        media_files = await self.file_repo.get_media_files(product_id)
+        all_files = await self.file_repo.get_all_files(product_id)
         
         # Получаем категорию
         from sqlalchemy import select
@@ -65,6 +67,8 @@ class ProductService:
             "category": category,
             "main_image": main_image,
             "documents": documents,
+            "media_files": media_files,
+            "all_files": all_files,
             "spheres": []
         }
 

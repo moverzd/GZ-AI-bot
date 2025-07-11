@@ -409,13 +409,17 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
 
-    if product_info.get("documents"):
-        for doc in product_info["documents"]:
-            button = types.InlineKeyboardButton(
-                text=f"📄 Документ",
-                callback_data=f"doc:{doc.file_id}"
-            )
-            keyboard.inline_keyboard.append([button])
+    # Проверяем есть ли файлы у продукта (документы или медиа)
+    has_files = False
+    if product_info.get("all_files"):
+        has_files = len(product_info["all_files"]) > 0
+    
+    if has_files:
+        content_button = types.InlineKeyboardButton(
+            text="Показать контент",
+            callback_data=f"show_content:{product_id}"
+        )
+        keyboard.inline_keyboard.append([content_button])
 
     # Определяем кнопку возврата в зависимости от источника
     if from_search and search_query:
@@ -562,3 +566,153 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
                 reply_markup=keyboard
             )
     await callback.answer()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith('show_content:'))
+async def show_product_content(callback: types.CallbackQuery, session: AsyncSession):
+    """
+    Показать файлы продукта (документы и медиа отдельными сообщениями)
+    """
+    if not callback.data:
+        return
+        
+    product_id = int(callback.data.split(':')[1])
+    
+    product_service = ProductService(session)
+    product_info = await product_service.get_product_by_id(product_id)
+    
+    if not product_info:
+        await callback.answer("Продукт не найден", show_alert=True)
+        return
+    
+    documents = product_info.get("documents", [])
+    media_files = product_info.get("media_files", [])
+    
+    # Создаём кнопку возврата к продукту
+    back_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
+        types.InlineKeyboardButton(
+            text="⬅️ Назад к продукту",
+            callback_data=f"product:{product_id}"
+        )
+    ]])
+    
+    # Отправляем документы
+    if documents:
+        doc_text = f"📄 <b>Документы для {esc(product_info['name'])}</b>\n\n"
+        
+        doc_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+        
+        for doc in documents:
+            doc_title = doc.title if doc.title else "Документ"
+            button = types.InlineKeyboardButton(
+                text=f"📄 {doc_title}",
+                callback_data=f"file:{doc.id}"
+            )
+            doc_keyboard.inline_keyboard.append([button])
+        
+        # Добавляем кнопку возврата
+        doc_keyboard.inline_keyboard.append([
+            types.InlineKeyboardButton(
+                text="⬅️ Назад к продукту",
+                callback_data=f"product:{product_id}"
+            )
+        ])
+        
+        await callback.message.answer(
+            doc_text,
+            parse_mode="HTML",
+            reply_markup=doc_keyboard
+        ) if callback.message else None
+    else:
+        await callback.message.answer(
+            f"📄 <b>Документы для {esc(product_info['name'])}</b>\n\n"
+            "Документы не найдены.",
+            parse_mode="HTML",
+            reply_markup=back_keyboard
+        ) if callback.message else None
+    
+    # Отправляем медиа файлы
+    if media_files:
+        media_text = f"🎨 <b>Медиа для {esc(product_info['name'])}</b>\n\n"
+        
+        media_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+        
+        for media in media_files:
+            media_title = media.title if media.title else "Медиа файл"
+            # Определяем иконку по типу файла
+            if media.kind == 'image':
+                icon = "🖼️"
+            elif media.kind == 'video':
+                icon = "🎬"
+            else:
+                icon = "📎"
+                
+            button = types.InlineKeyboardButton(
+                text=f"{icon} {media_title}",
+                callback_data=f"file:{media.id}"
+            )
+            media_keyboard.inline_keyboard.append([button])
+        
+        # Добавляем кнопку возврата
+        media_keyboard.inline_keyboard.append([
+            types.InlineKeyboardButton(
+                text="⬅️ Назад к продукту",
+                callback_data=f"product:{product_id}"
+            )
+        ])
+        
+        await callback.message.answer(
+            media_text,
+            parse_mode="HTML",
+            reply_markup=media_keyboard
+        ) if callback.message else None
+    else:
+        await callback.message.answer(
+            f"🎨 <b>Медиа для {esc(product_info['name'])}</b>\n\n"
+            "Медиа файлы не найдены.",
+            parse_mode="HTML",
+            reply_markup=back_keyboard
+        ) if callback.message else None
+    
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith('file:'))
+async def send_file(callback: types.CallbackQuery, session: AsyncSession):
+    """
+    Отправить файл пользователю
+    """
+    if not callback.data:
+        return
+        
+    file_record_id = int(callback.data.split(':')[1])
+    
+    try:
+        # Получаем запись файла из БД
+        from sqlalchemy import select
+        from src.database.models import ProductFile
+        
+        result = await session.execute(
+            select(ProductFile).where(ProductFile.id == file_record_id, ProductFile.is_deleted == False)
+        )
+        file_record = result.scalars().first()
+        
+        if not file_record:
+            await callback.answer("Файл не найден", show_alert=True)
+            return
+        
+        # Отправляем файл пользователю
+        if callback.message and file_record:
+            file_kind = str(file_record.kind)
+            file_id = str(file_record.file_id)
+            
+            if file_kind == 'image':
+                await callback.message.answer_photo(photo=file_id)
+            elif file_kind == 'video':
+                await callback.message.answer_video(video=file_id)
+            else:
+                await callback.message.answer_document(document=file_id)
+        
+        await callback.answer("Файл отправлен")
+    except Exception as e:
+        await callback.answer("Ошибка при отправке файла", show_alert=True)
