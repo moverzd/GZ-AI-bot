@@ -22,11 +22,11 @@ async def catalog_menu(callback: types.CallbackQuery):
     """
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
-            text="По категориям продукции",
+            text="📂 По категориям продукции",
             callback_data="catalog:categories"
         )],
         [types.InlineKeyboardButton(
-            text="По сферам применения",
+            text="📂 По сферам применения",
             callback_data="catalog:spheres"
         )],
         [types.InlineKeyboardButton(
@@ -41,7 +41,7 @@ async def catalog_menu(callback: types.CallbackQuery):
             if callback.message.photo or callback.message.document or callback.message.video:
                 # Для сообщений с медиа отправляем новое сообщение
                 await callback.message.answer(
-                    "<b>Каталог продукции</b>\n\n"
+                    "<b>📂 Каталог продукции</b>\n\n"
                     "Выберите способ просмотра каталога:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -54,7 +54,7 @@ async def catalog_menu(callback: types.CallbackQuery):
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
-                    "<b>Каталог продукции</b>\n\n"
+                    "<b>📂 Каталог продукции</b>\n\n"
                     "Выберите способ просмотра каталога:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -68,7 +68,7 @@ async def catalog_menu(callback: types.CallbackQuery):
                 pass
             await callback.bot.send_message(
                 chat_id=callback.message.chat.id,
-                text="<b>Каталог продукции</b>\n\n"
+                text="<b>📂 Каталог продукции</b>\n\n"
                      "Выберите способ просмотра каталога:",
                 reply_markup=keyboard,
                 parse_mode='HTML'
@@ -107,7 +107,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
             if callback.message.photo or callback.message.document or callback.message.video:
                 # Для сообщений с медиа отправляем новое сообщение
                 await callback.message.answer(
-                    "<b>Категории продукции:</b>\n\n"
+                    "<b>📂 Категории продукции:</b>\n\n"
                     "Выберите категорию:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -120,7 +120,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
-                    "<b>Категории продукции:</b>\n\n"
+                    "<b>📂 Категории продукции:</b>\n\n"
                     "Выберите категорию:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -128,7 +128,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
         except Exception as e:
             # В случае ошибки отправляем новое сообщение
             await callback.message.answer(
-                "<b>Категории продукции:</b>\n\n"
+                "<b>📂 Категории продукции:</b>\n\n"
                 "Выберите категорию:",
                 reply_markup=keyboard,
                 parse_mode='HTML'
@@ -166,7 +166,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
             if callback.message.photo or callback.message.document or callback.message.video:
                 # Для сообщений с медиа отправляем новое сообщение
                 await callback.message.answer(
-                    "<b>Сферы применения:</b>\n\n"
+                    "<b>📂 Сферы применения:</b>\n\n"
                     "Выберите сферу применения:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -179,7 +179,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
-                    "<b>Сферы применения:</b>\n\n"
+                    "<b>📂 Сферы применения:</b>\n\n"
                     "Выберите сферу применения:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
@@ -187,7 +187,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
         except Exception as e:
             # В случае ошибки отправляем новое сообщение
             await callback.message.answer(
-                "<b>Сферы применения:</b>\n\n"
+                "<b>📂 Сферы применения:</b>\n\n"
                 "Выберите сферу применения:",
                 reply_markup=keyboard,
                 parse_mode='HTML'
@@ -331,6 +331,8 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     if not product_info:
         if callback.message and isinstance(callback.message, Message):
             # Определяем куда вернуться в зависимости от источника
+            navigation_buttons = []
+            
             if from_search and search_query:
                 back_button = types.InlineKeyboardButton(
                     text="⬅️ Назад к результатам поиска",
@@ -352,9 +354,18 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
                     callback_data="catalog:categories"
                 )
             
+            navigation_buttons.append(back_button)
+            
+            # Добавляем кнопку "Главное меню"
+            main_menu_button = types.InlineKeyboardButton(
+                text="🏠 Главное меню",
+                callback_data="menu:main"
+            )
+            navigation_buttons.append(main_menu_button)
+            
             await callback.message.edit_text(
                 "Продукт не найден или удален.",
-                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[back_button]])
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[navigation_buttons])
             )
         await callback.answer()
         return
@@ -416,11 +427,14 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     
     if has_files:
         content_button = types.InlineKeyboardButton(
-            text="Показать контент",
+            text="📄 Показать доступные файлы",
             callback_data=f"show_content:{product_id}"
         )
         keyboard.inline_keyboard.append([content_button])
 
+    # Кнопки навигации
+    navigation_buttons = []
+    
     # Определяем кнопку возврата в зависимости от источника
     if from_search and search_query:
         back_button = types.InlineKeyboardButton(
@@ -443,7 +457,16 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
             callback_data="menu:catalog"
         )
     
-    keyboard.inline_keyboard.append([back_button])
+    navigation_buttons.append(back_button)
+    
+    # Добавляем кнопку "Главное меню"
+    main_menu_button = types.InlineKeyboardButton(
+        text="🏠 Главное меню",
+        callback_data="menu:main"
+    )
+    navigation_buttons.append(main_menu_button)
+    
+    keyboard.inline_keyboard.append(navigation_buttons)
 
     if product_info.get("main_image"):
         if callback.message and isinstance(callback.message, Message):
@@ -588,11 +611,15 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
     documents = product_info.get("documents", [])
     media_files = product_info.get("media_files", [])
     
-    # Создаём кнопку возврата к продукту
+    # Создаём кнопки возврата
     back_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
         types.InlineKeyboardButton(
-            text="⬅️ Назад к продукту",
+            text="⬅️ Назад к карточке продукта",
             callback_data=f"product:{product_id}"
+        ),
+        types.InlineKeyboardButton(
+            text="🏠 Главное меню",
+            callback_data="menu:main"
         )
     ]])
     
@@ -605,16 +632,20 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         for doc in documents:
             doc_title = doc.title if doc.title else "Документ"
             button = types.InlineKeyboardButton(
-                text=f"📄 {doc_title}",
+                text=f"{doc_title}",
                 callback_data=f"file:{doc.id}"
             )
             doc_keyboard.inline_keyboard.append([button])
         
-        # Добавляем кнопку возврата
+        # Добавляем кнопки возврата
         doc_keyboard.inline_keyboard.append([
             types.InlineKeyboardButton(
-                text="⬅️ Назад к продукту",
+                text="⬅️ Назад к карточке продукта",
                 callback_data=f"product:{product_id}"
+            ),
+            types.InlineKeyboardButton(
+                text="🏠 Главное меню",
+                callback_data="menu:main"
             )
         ])
         
@@ -633,7 +664,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
     
     # Отправляем медиа файлы
     if media_files:
-        media_text = f"🎨 <b>Медиа для {esc(product_info['name'])}</b>\n\n"
+        media_text = f"🖼️ <b>Медиа для {esc(product_info['name'])}</b>\n\n"
         
         media_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
         
@@ -641,11 +672,11 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
             media_title = media.title if media.title else "Медиа файл"
             # Определяем иконку по типу файла
             if media.kind == 'image':
-                icon = "🖼️"
+                icon = "📷️"
             elif media.kind == 'video':
-                icon = "🎬"
+                icon = "🎥"
             else:
-                icon = "📎"
+                icon = "🖼️"
                 
             button = types.InlineKeyboardButton(
                 text=f"{icon} {media_title}",
@@ -653,11 +684,15 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
             )
             media_keyboard.inline_keyboard.append([button])
         
-        # Добавляем кнопку возврата
+        # Добавляем кнопки возврата
         media_keyboard.inline_keyboard.append([
             types.InlineKeyboardButton(
-                text="⬅️ Назад к продукту",
+                text="⬅️ Назад к карточке продукта",
                 callback_data=f"product:{product_id}"
+            ),
+            types.InlineKeyboardButton(
+                text="🏠 Главное меню",
+                callback_data="menu:main"
             )
         ])
         
@@ -668,7 +703,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         ) if callback.message else None
     else:
         await callback.message.answer(
-            f"🎨 <b>Медиа для {esc(product_info['name'])}</b>\n\n"
+            f"🖼 <b>Медиа для {esc(product_info['name'])}</b>\n\n"
             "Медиа файлы не найдены.",
             parse_mode="HTML",
             reply_markup=back_keyboard

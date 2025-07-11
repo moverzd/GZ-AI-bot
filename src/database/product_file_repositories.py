@@ -13,7 +13,7 @@ class ProductFileRepository:
     async def get_main_image(self, product_id: int) -> Optional[str]:
         """
         Получение главного изображения для продукта.
-        Возвращает только изображения с ordering = 0 (специально помеченные как главные)
+        Возвращает изображение с флагом is_main_image = True
         """
         result = await self.session.execute(
             select(ProductFile.file_id)
@@ -21,8 +21,7 @@ class ProductFileRepository:
                 ProductFile.product_id == product_id, 
                 ProductFile.kind == "image", 
                 ProductFile.is_deleted == False,
-                ProductFile.ordering == 0,
-                ProductFile.title.is_(None)  # Главные изображения не имеют title
+                ProductFile.is_main_image == True
             )
             .limit(1)
         )
@@ -49,7 +48,7 @@ class ProductFileRepository:
     async def get_media_files(self, product_id: int) -> List[ProductFile]:
         """
         Получение всех медиа файлов (изображения и видео), связанных с продуктом.
-        Исключает главные изображения (те которые без title).
+        Исключает главные изображения.
         """
         # Типы медиа файлов
         media_types = ['image', 'video']
@@ -60,7 +59,7 @@ class ProductFileRepository:
                 ProductFile.product_id == product_id, 
                 ProductFile.kind.in_(media_types), 
                 ProductFile.is_deleted == False,
-                ProductFile.title.is_not(None)  # Только файлы с названием
+                ProductFile.is_main_image == False  # Исключаем главные изображения
             )
             .order_by(ProductFile.ordering)
         )
@@ -68,14 +67,14 @@ class ProductFileRepository:
 
     async def get_all_files(self, product_id: int) -> List[ProductFile]:
         """
-        Получение всех файлов продукта, которые имеют названия (исключая главные изображения).
+        Получение всех файлов продукта, исключая главные изображения.
         """
         result = await self.session.execute(
             select(ProductFile)
             .where(
                 ProductFile.product_id == product_id, 
                 ProductFile.is_deleted == False,
-                ProductFile.title.is_not(None)  # Только файлы с названием
+                ProductFile.is_main_image == False  # Исключаем главные изображения
             )
             .order_by(ProductFile.ordering)
         )

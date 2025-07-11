@@ -15,6 +15,8 @@ from src.handlers.search import router as search_router
 from src.handlers.admin import router as admin_router
 from src.handlers.edit import router as edit_router
 from src.handlers.upload_content import router as upload_content_router
+from src.handlers.upload_main_image import router as upload_main_image_router
+from src.handlers.delete_files import router as delete_files_router
 from src.keyboards.user import get_main_menu_keyboard
 from aiogram import Bot, Dispatcher
 
@@ -57,6 +59,8 @@ async def main():
     dp.include_router(admin_router) # админ-панель
     dp.include_router(edit_router) # редактирование
     dp.include_router(upload_content_router) # загрузка файлов
+    dp.include_router(upload_main_image_router) # загрузка главных изображений
+    dp.include_router(delete_files_router) # удаление файлов
         
     @dp.message(Command('admin'))
     # Message - класс сообщения, очень много полей у него
@@ -72,7 +76,7 @@ async def main():
         from src.keyboards.admin import get_admin_main_menu_keyboard
         
         admin_text = (
-            '<b>Панель администратора</b>\n\n'
+            '<b>🛠️ Панель администратора</b>\n\n'
             'Выберите действие:'
         )
 
@@ -89,7 +93,7 @@ async def main():
                 now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 await bot.send_message(
                     admin_id,
-                    f"Бот стал доступен в {now}"
+                    f"🛠️ Бот онлайн! {now}"
                 )
             except Exception:
                 pass 

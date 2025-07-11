@@ -67,7 +67,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
                     callback_data="search:new"
                 ),
                 types.InlineKeyboardButton(
-                    text="🗃 Каталог", 
+                    text="📂 Каталог", 
                     callback_data="menu:catalog"
                 )
             ], [
@@ -100,7 +100,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
-            text="🗃 Каталог", 
+            text="📂 Каталог", 
             callback_data="menu:catalog"
         )
     ])
@@ -136,17 +136,33 @@ async def new_search(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(SearchProduct.waiting_query)
     
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            "<b>Поиск продуктов</b>\n\n"
-            "Введите название продукта или его часть для поиска:",
-            parse_mode="HTML",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(
-                    text="⬅️ В главное меню",
-                    callback_data="menu:main"
-                )
-            ]])
-        )
+        try:
+            await callback.message.edit_text(
+                "<b>🔍 Поиск продуктов</b>\n\n"
+                "Введите название продукта или его часть для поиска:",
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(
+                        text="⬅️ В главное меню",
+                        callback_data="menu:main"
+                    )
+                ]])
+            )
+        except Exception:
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer(
+                "<b>🔍 Поиск продуктов</b>\n\n"
+                "Введите название продукта или его часть для поиска:",
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(
+                        text="⬅️ В главное меню",
+                        callback_data="menu:main"
+                    )
+                ]])
+            )
+            return
     await callback.answer()
 
 
@@ -176,7 +192,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
                 callback_data="search:new"
             ),
             types.InlineKeyboardButton(
-                text="🗃 Каталог", 
+                text="📂 Каталог", 
                 callback_data="menu:catalog"
             )
         ], [
@@ -239,7 +255,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
-            text="🗃 Каталог", 
+            text="📂 Каталог", 
             callback_data="menu:catalog"
         )
     ])

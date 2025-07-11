@@ -55,4 +55,19 @@ class AddFiles(StatesGroup):
     waiting_title = State()  # Ожидание названия файла
 
 
+class DeleteFiles(StatesGroup):
+    """
+    Удаление файлов продукта
+    """
+    waiting_product_id = State()  # Ожидание ID продукта для удаления файлов
+
+
+class UploadMainImage(StatesGroup):
+    """
+    Загрузка главного изображения продукта
+    """
+    waiting_product_id = State()  # Ожидание ID продукта
+    waiting_image = State()  # Ожидание изображения
+
+
 

@@ -25,54 +25,85 @@ def is_accessible_message(message) -> bool:
 async def admin_add_product_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Добавить продукт' из админского меню"""
     if not is_admin:
-        await callback.answer("У вас нет прав администратора", show_alert=True)
+        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(AddProd.waiting_name)
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text("Введите название нового продукта:")
+        try:
+            await callback.message.edit_text("Введите название нового продукта:")
+        except Exception:
+            # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer("Введите название нового продукта:")
+            return
     await callback.answer()
 
 @router.callback_query(lambda c: c.data == 'admin:edit_product')
 async def admin_edit_product_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Отредактировать продукт' из админского меню"""
     if not is_admin:
-        await callback.answer("У вас нет прав администратора", show_alert=True)
+        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(EditCard.waiting_product_id)
     
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            "<b>Редактирование продукта</b>\n\n"
-            "Введите ID продукта, который хотите отредактировать:\n\n"
-            "ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
-            parse_mode="HTML"
-        )
+        try:
+            await callback.message.edit_text(
+                "<b>Редактирование продукта</b>\n\n"
+                "Введите ID продукта, который хотите отредактировать:\n\n"
+                "ℹ️ ️ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                parse_mode="HTML"
+            )
+        except Exception:
+            # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer(
+                "<b>Редактирование продукта</b>\n\n"
+                "Введите ID продукта, который хотите отредактировать:\n\n"
+                "ℹ️ ️ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                parse_mode="HTML"
+            )
+            return
     await callback.answer()
 
 @router.callback_query(lambda c: c.data == 'admin:delete_product')
 async def admin_delete_product_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Удалить продукт' из админского меню"""
     if not is_admin:
-        await callback.answer("У вас нет прав администратора", show_alert=True)
+        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(DeleteProduct.waiting_product_id)
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            "<b>Удаление продукта</b>\n\n"
-            "Введите ID продукта, который хотите удалить:\n\n"
-            "ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
-            parse_mode="HTML"
-        )
+        try:
+            await callback.message.edit_text(
+                "<b>Удаление продукта</b>\n\n"
+                "Введите ID продукта, который хотите удалить:\n\n"
+                "ℹ️ ️ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                parse_mode="HTML"
+            )
+        except Exception:
+            # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer(
+                "<b>Удаление продукта</b>\n\n"
+                "Введите ID продукта, который хотите удалить:\n\n"
+                "ℹ️ ️ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                parse_mode="HTML"
+            )
+            return
     await callback.answer()
 
 @router.message(Command('add_product'))
 async def start_add_product(message: types.Message, state: FSMContext, is_admin: bool = False):
     """Добавить продукт в админ меню"""
     if not is_admin:
-        await message.answer("У вас нет прав администратора")
+        await message.answer("🔴 У вас нет прав администратора")
         return
     
     await state.set_state(AddProd.waiting_name)
@@ -82,7 +113,7 @@ async def start_add_product(message: types.Message, state: FSMContext, is_admin:
 async def process_name(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка названия продукта"""
     if not message.text or not message.text.strip():
-        await message.answer("Название не может быть пустым. Введите название продукта:")
+        await message.answer("🔴 Название не может быть пустым. Введите название продукта:")
         return
     
     name = message.text.strip()
@@ -93,7 +124,7 @@ async def process_name(message: types.Message, state: FSMContext, session: Async
     categories = result.scalars().all()
     
     if not categories:
-        await message.answer("В системе нет категорий. Сначала добавьте категории.")
+        await message.answer("🔴 В системе нет категорий. Сначала добавьте категории.")
         await state.clear()
         return
     
@@ -120,7 +151,7 @@ async def process_name(message: types.Message, state: FSMContext, session: Async
 async def process_category(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     """Обработка выбора категории при создании продукта"""
     if not callback.data or not callback.message or not is_accessible_message(callback.message):
-        await callback.answer("Ошибка обработки")
+        await callback.answer("🔴 Ошибка обработки")
         return
         
     message = cast(types.Message, callback.message)
@@ -132,7 +163,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext, ses
     category = result.scalar_one_or_none()
     
     if not category:
-        await message.edit_text("Категория не найдена")
+        await message.edit_text("🔴 Категория не найдена")
         await state.clear()
         return
     
@@ -141,7 +172,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext, ses
     spheres = result.scalars().all()
     
     if not spheres:
-        await message.edit_text("В системе нет сфер применения.")
+        await message.edit_text("🔴 В системе нет сфер применения.")
         await state.clear()
         return
     
@@ -169,7 +200,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext, ses
 async def process_sphere(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     """Обработка выбора сферы и переход к дополнительным полям"""
     if not callback.data or not callback.message or not is_accessible_message(callback.message):
-        await callback.answer("Ошибка обработки")
+        await callback.answer("🔴 Ошибка обработки")
         return
         
     message = cast(types.Message, callback.message)
@@ -181,7 +212,7 @@ async def process_sphere(callback: types.CallbackQuery, state: FSMContext, sessi
     category_id = data.get('category_id')
     
     if not name or not category_id:
-        await message.edit_text("Ошибка: данные потеряны")
+        await message.edit_text("🔴 Ошибка: данные потеряны")
         await state.clear()
         return
     
@@ -190,7 +221,7 @@ async def process_sphere(callback: types.CallbackQuery, state: FSMContext, sessi
     sphere = result.scalar_one_or_none()
     
     if not sphere:
-        await message.edit_text("Сфера не найдена")
+        await message.edit_text("🔴 Сфера не найдена")
         await state.clear()
         return
     
@@ -280,7 +311,7 @@ async def process_package(message: types.Message, state: FSMContext, session: As
     consumption = data.get('consumption')
     
     if not name or not category_id or not sphere_id:
-        await message.answer("Ошибка: основные данные потеряны")
+        await message.answer("🔴 Ошибка: основные данные потеряны")
         await state.clear()
         return
     
@@ -301,7 +332,7 @@ async def process_package(message: types.Message, state: FSMContext, session: As
         product_id = product_result.scalar()
         
         if not product_id:
-            raise Exception("Не удалось получить ID созданного продукта")
+            raise Exception("🔴 Не удалось получить ID созданного продукта")
         
         # Создаем связь со сферой
         insert_sphere = insert(ProductSphere).values(
@@ -355,7 +386,7 @@ async def process_package(message: types.Message, state: FSMContext, session: As
 async def start_delete_product(message: types.Message, state: FSMContext, command: CommandObject, session: AsyncSession, is_admin: bool = False):
     """Удаление продукта по ID (только для админов)"""
     if not is_admin:
-        await message.answer("У вас нет прав администратора")
+        await message.answer("🔴 У вас нет прав администратора")
         return
     
     # Проверяем, передан ли ID в команде
@@ -364,7 +395,7 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
             "<b>Использование команды:</b>\n"
             "<code>/delete_product ID</code>\n\n"
             "Пример: <code>/delete_product 123</code>\n\n"
-            "ID продукта можно узнать в каталоге или поиске.",
+            "ℹ️ ID продукта можно узнать в каталоге или поиске.",
             parse_mode="HTML"
         )
         return
@@ -382,7 +413,7 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
         
         if not product_data:
             await message.answer(
-                f" Продукт с ID {product_id} не найден или уже удален."
+                f"🔴 Продукт с ID {product_id} не найден или уже удален."
             )
             return
         
@@ -418,8 +449,8 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
         # Создаем клавиатуру с кнопками подтверждения
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"delete_confirm:{product_id}"),
-                types.InlineKeyboardButton(text="❌ Нет, отменить", callback_data=f"delete_cancel:{product_id}")
+                types.InlineKeyboardButton(text="🟢 Да, удалить", callback_data=f"delete_confirm:{product_id}"),
+                types.InlineKeyboardButton(text="🔴 Нет, отменить", callback_data=f"delete_cancel:{product_id}")
             ]
         ])
         
@@ -427,14 +458,14 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
         
     except ValueError:
         await message.answer(
-            " <b>Неверный формат ID</b>\n\n"
+            "🔴 <b>Неверный формат ID</b>\n\n"
             "Используйте: <code>/delete_product ID</code>\n"
             "Пример: <code>/delete_product 123</code>",
             parse_mode="HTML"
         )
     except Exception as e:
         await message.answer(
-            f" Ошибка при поиске продукта: {str(e)[:100]}"
+            f"🔴 Ошибка при поиске продукта: {str(e)[:100]}"
         )
 
 # Удаляем старый обработчик состояния DeleteProduct.waiting_product_id
@@ -446,7 +477,7 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
 async def confirm_delete_product_callback(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     """Подтверждение удаления продукта через кнопку"""
     if not callback.data:
-        await callback.answer("Ошибка обработки")
+        await callback.answer("🔴 Ошибка обработки")
         return
     
     try:
@@ -461,7 +492,13 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
         
         if not product:
             if callback.message and isinstance(callback.message, types.Message):
-                await callback.message.edit_text(" Продукт не найден или уже удален.")
+                try:
+                    await callback.message.edit_text("🔴 Продукт не найден или уже удален.")
+                except Exception:
+                    await callback.answer()
+                    await callback.message.delete()
+                    await callback.message.answer("🔴 Продукт не найден или уже удален.")
+                    return
             await callback.answer()
             return
         
@@ -480,29 +517,58 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
         logger.info(f"Админ {user_id} мягко удалил продукт {product_id}: {product.name}")
         
         if callback.message and isinstance(callback.message, types.Message):
-            await callback.message.edit_text(
-                f"✅ <b>Продукт успешно удален!</b>\n\n"
-                f"ID: {product_id}\n"
-                f"Название: {esc(str(product.name))}\n"
-                f"Статус: Удален\n\n"
-                f"Продукт помечен как удаленный и больше не отображается в каталоге.",
-                parse_mode="HTML",
-                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu:main")
-                ]])
-            )
-        await callback.answer("✅ Продукт удален")
+            try:
+                await callback.message.edit_text(
+                    f"🟢 <b>Продукт успешно удален!</b>\n\n"
+                    f"ID: {product_id}\n"
+                    f"Название: {esc(str(product.name))}\n"
+                    f"Статус: Удален\n\n"
+                    f"Продукт помечен как удаленный и больше не отображается в каталоге.",
+                    parse_mode="HTML",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu:main")
+                    ]])
+                )
+            except Exception:
+                await callback.answer("🟢 Продукт удален")
+                await callback.message.delete()
+                await callback.message.answer(
+                    f"🟢 <b>Продукт успешно удален!</b>\n\n"
+                    f"ID: {product_id}\n"
+                    f"Название: {esc(str(product.name))}\n"
+                    f"Статус: Удален\n\n"
+                    f"Продукт помечен как удаленный и больше не отображается в каталоге.",
+                    parse_mode="HTML",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu:main")
+                    ]])
+                )
+                return
+        await callback.answer("🟢 Продукт удален")
         
     except Exception as e:
         if callback.message and isinstance(callback.message, types.Message):
-            await callback.message.edit_text(
-                f" Ошибка при удалении продукта: {str(e)[:100]}\n"
-                "Попробуйте еще раз.",
-                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="Главное меню", callback_data="menu:main")
-                ]])
-            )
-        await callback.answer(" Ошибка удаления")
+            try:
+                await callback.message.edit_text(
+                    f"🔴 Ошибка при удалении продукта: {str(e)[:100]}\n"
+                    "Попробуйте еще раз.",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="Главное меню", callback_data="menu:main")
+                    ]])
+                )
+            except Exception:
+                await callback.answer("🔴 Ошибка удаления")
+                await callback.message.delete()
+                await callback.message.answer(
+                    f"🔴 Ошибка при удалении продукта: {str(e)[:100]}\n"
+                    "Попробуйте еще раз.",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="Главное меню", callback_data="menu:main")
+                    ]])
+                )
+                await session.rollback()
+                return
+        await callback.answer("🔴 Ошибка удаления")
         await session.rollback()
 
 # Обработчик кнопки отмены удаления
@@ -510,20 +576,33 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
 async def cancel_delete_product_callback(callback: types.CallbackQuery, state: FSMContext):
     """Отмена удаления продукта через кнопку"""
     if not callback.data:
-        await callback.answer("Ошибка обработки")
+        await callback.answer("🔴 Ошибка обработки")
         return
     
     product_id = callback.data.split(':')[1]
     
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            f"<b>Удаление отменено</b>\n\n"
-            f"Продукт с ID {product_id} остался без изменений.",
-            parse_mode="HTML",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="Главное меню", callback_data="menu:main")
-            ]])
-        )
+        try:
+            await callback.message.edit_text(
+                f"<b>Удаление отменено!</b>\n\n"
+                f"Продукт с ID {product_id} остался без изменений.",
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="Главное меню", callback_data="menu:main")
+                ]])
+            )
+        except Exception:
+            await callback.answer("❌ Удаление отменено")
+            await callback.message.delete()
+            await callback.message.answer(
+                f"<b>Удаление отменено!</b>\n\n"
+                f"Продукт с ID {product_id} остался без изменений.",
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="Главное меню", callback_data="menu:main")
+                ]])
+            )
+            return
     await callback.answer(" Удаление отменено")
 
 
@@ -550,7 +629,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         
         if not product_data:
             await message.answer(
-                f" Продукт с ID {product_id} не найден или уже удален.\n"
+                f"🔴 Продукт с ID {product_id} не найден или уже удален.\n"
                 "Попробуйте еще раз или отправьте /cancel для отмены."
             )
             return
@@ -587,8 +666,8 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         # Создаем клавиатуру с кнопками подтверждения
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"delete_confirm:{product_id}"),
-                types.InlineKeyboardButton(text="❌ Нет, отменить", callback_data=f"delete_cancel:{product_id}")
+                types.InlineKeyboardButton(text="🟢 Да, удалить", callback_data=f"delete_confirm:{product_id}"),
+                types.InlineKeyboardButton(text="🔴 Нет, отменить", callback_data=f"delete_cancel:{product_id}")
             ]
         ])
         
@@ -597,14 +676,14 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         
     except ValueError:
         await message.answer(
-            " <b>Неверный формат ID</b>\n\n"
+            "<b>Неверный формат ID</b>\n\n"
             "Введите число.\n"
             "Попробуйте еще раз или отправьте /cancel для отмены.",
             parse_mode="HTML"
         )
     except Exception as e:
         await message.answer(
-            f" Ошибка при поиске продукта: {str(e)[:100]}\n"
+            f"🔴 Ошибка при поиске продукта: {str(e)[:100]}\n"
             "Попробуйте еще раз."
         )
 
@@ -639,7 +718,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         
         if not product_info:
             await message.answer(
-                f"Продукт с ID {product_id} не найден или удален.\n"
+                f"🔴 Продукт с ID {product_id} не найден или удален.\n"
                 "Попробуйте еще раз или отправьте /cancel для отмены."
             )
             return
@@ -661,11 +740,11 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         
     except ValueError:
         await message.answer(
-            "Неверный формат ID. Введите число.\n"
+            "🔴 Неверный формат ID. Введите число.\n"
             "Попробуйте еще раз или отправьте /cancel для отмены."
         )
     except Exception as e:
         await message.answer(
-            f"Ошибка при поиске продукта: {str(e)[:100]}\n"
+            f"🔴 Ошибка при поиске продукта: {str(e)[:100]}\n"
             "Попробуйте еще раз."
         )

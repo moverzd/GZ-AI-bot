@@ -55,19 +55,31 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
     
     await state.set_state(AddFiles.waiting_product_id)
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            "<b>Добавление файлов к продукту</b>\n\n"
-            "Введите ID продукта, к которому хотите добавить файлы:\n\n"
-            "ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
-            parse_mode="HTML"
-        )
+        try:
+            await callback.message.edit_text(
+                "<b>Добавление файлов к продукту</b>\n\n"
+                "Введите ID продукта, к которому хотите добавить файлы:\n\n"
+                "️️ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                parse_mode="HTML"
+            )
+        except Exception:
+            # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer(
+                "<b>Добавление файлов к продукту</b>\n\n"
+                "Введите ID продукта, к которому хотите добавить файлы:\n\n"
+                "️️ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                parse_mode="HTML"
+            )
+            return
     await callback.answer()
 
 @router.message(AddFiles.waiting_product_id)
 async def process_product_id_for_files(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка ввода ID продукта для добавления файлов"""
     if not message.text:
-        await message.answer("❌ Сообщение не содержит текста. Попробуйте ещё раз.")
+        await message.answer("🔴 Сообщение не содержит текста. Попробуйте ещё раз.")
         return
         
     try:
@@ -79,7 +91,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         
         if not product:
             await message.answer(
-                "❌ Продукт с таким ID не найден.\n\n"
+                "🔴 Продукт с таким ID не найден.\n\n"
                 "Попробуйте ещё раз или введите /admin для возврата в меню."
             )
             return
@@ -100,7 +112,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         
     except ValueError:
         await message.answer(
-            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
+            "🔴 Неверный формат ID продукта. Введите числовое значение.\n\n"
             "Или введите /admin для возврата в меню."
         )
 
@@ -190,7 +202,7 @@ async def process_video_file(message: types.Message, state: FSMContext):
 async def process_unsupported_file(message: types.Message, state: FSMContext):
     """Обработка неподдерживаемого типа файла"""
     await message.answer(
-        "❌ <b>Неподдерживаемый тип файла</b>\n\n"
+        "🔴 <b>Неподдерживаемый тип файла</b>\n\n"
         "<b>Поддерживаемые форматы:</b>\n"
         "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
         "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)\n\n"
@@ -202,14 +214,14 @@ async def process_unsupported_file(message: types.Message, state: FSMContext):
 async def process_file_title(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка названия файла и сохранение в БД"""
     if not message.text:
-        await message.answer("❌ Сообщение не содержит текста. Попробуйте ещё раз:")
+        await message.answer("🔴 Сообщение не содержит текста. Попробуйте ещё раз:")
         return
         
     title = message.text.strip()
     
     if not title:
         await message.answer(
-            "❌ Название не может быть пустым. Попробуйте ещё раз:"
+            "🔴 Название не может быть пустым. Попробуйте ещё раз:"
         )
         return
     
@@ -223,6 +235,9 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
         # Получаем ID пользователя
         user_id = message.from_user.id if message.from_user else None
         
+        # Генерируем уникальный ordering на основе timestamp для избежания конфликтов
+        unique_ordering = int(datetime.now().timestamp())
+        
         # Создаём запись в БД
         new_file = ProductFile(
             product_id=data['product_id'],
@@ -234,7 +249,7 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
             original_filename=data.get('original_filename'),
             uploaded_by=user_id,
             uploaded_at=datetime.now(),
-            ordering=1  # Не главное изображение
+            ordering=unique_ordering  # Уникальное значение на основе timestamp
         )
         
         session.add(new_file)
@@ -265,7 +280,7 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
         
     except Exception as e:
         await message.answer(
-            f"❌ Ошибка при сохранении файла: {str(e)}\n\n"
+            f"🔴 Ошибка при сохранении файла: {str(e)}\n\n"
             "Попробуйте ещё раз",
             reply_markup=get_admin_main_menu_keyboard()
         )
@@ -291,24 +306,50 @@ async def add_more_files_callback(callback: types.CallbackQuery, state: FSMConte
     await state.set_state(AddFiles.waiting_file)
     
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            f"<b>Добавление файла к продукту:</b> {esc(product['name'])}\n\n"
-            "Отправьте файл, который хотите добавить к этому продукту.\n\n"
-            "<b>Поддерживаемые форматы:</b>\n"
-            "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
-            "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
-            parse_mode="HTML"
-        )
+        try:
+            await callback.message.edit_text(
+                f"<b>Добавление файла к продукту:</b> {esc(product['name'])}\n\n"
+                "Отправьте файл, который хотите добавить к этому продукту.\n\n"
+                "<b>Поддерживаемые форматы:</b>\n"
+                "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
+                "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
+                parse_mode="HTML"
+            )
+        except Exception:
+            # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer(
+                f"<b>Добавление файла к продукту:</b> {esc(product['name'])}\n\n"
+                "Отправьте файл, который хотите добавить к этому продукту.\n\n"
+                "<b>Поддерживаемые форматы:</b>\n"
+                "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
+                "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
+                parse_mode="HTML"
+            )
+            return
     await callback.answer()
 
 @router.callback_query(lambda c: c.data == 'admin:menu')
 async def return_to_admin_menu(callback: types.CallbackQuery):
     """Возврат в админское меню"""
     if callback.message and isinstance(callback.message, types.Message):
-        await callback.message.edit_text(
-            "<b>Панель Администратора</b>\n\n"
-            "Выберите действие:",
-            parse_mode="HTML",
-            reply_markup=get_admin_main_menu_keyboard()
-        )
+        try:
+            await callback.message.edit_text(
+                "<b>🛠️ Панель Администратора</b>\n\n"
+                "Выберите действие:",
+                parse_mode="HTML",
+                reply_markup=get_admin_main_menu_keyboard()
+            )
+        except Exception:
+            # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
+            await callback.answer()
+            await callback.message.delete()
+            await callback.message.answer(
+                "<b>🛠️ Панель Администратора</b>\n\n"
+                "Выберите действие:",
+                parse_mode="HTML",
+                reply_markup=get_admin_main_menu_keyboard()
+            )
+            return
     await callback.answer()

@@ -57,6 +57,7 @@ class ProductFile(Base):
     uploaded_by = Column(Integer)  
     uploaded_at = Column(TIMESTAMP)  
     is_deleted = Column(Boolean, nullable = False, default = 0)
+    is_main_image = Column(Boolean, nullable = False, default = False)  # Флаг главной картинки
     title = Column(String(255))
     file_size = Column(Integer)
     mime_type = Column(String(100))
