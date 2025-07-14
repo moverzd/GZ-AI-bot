@@ -62,7 +62,7 @@ async def contact(callback: types.CallbackQuery):
                 '<b>Контактная информация:</b>\n'
                 '"ООО Газпромнефть-БМ"\n'
                 '<b>Телефон:</b> +7 (812) 493-25-66\n'
-                '<b>Адрес:</b> TBA\n'
+                '<b>Адрес:</b> Большой пр. В.О. д. 80, лит. Р3-5, Санкт-Петербург, Россия, 199178 \n'
                 '<b>Email:</b> Brit@gazprom-neft.ru\n'
                 '<b>Сайт:</b> https://www.gazprom-neft.ru',
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -80,7 +80,7 @@ async def contact(callback: types.CallbackQuery):
                 '<b>Контактная информация:</b>\n'
                 '"ООО Газпромнефть-БМ"\n'
                 '<b>Телефон:</b> +7 (812) 493-25-66\n'
-                '<b>Адрес:</b> TBA\n'
+                '<b>Адрес:</b> Большой пр. В.О. д. 80, лит. Р3-5, Санкт-Петербург, Россия, 199178 \n'
                 '<b>Email:</b> Brit@gazprom-neft.ru\n'
                 '<b>Сайт:</b> https://www.gazprom-neft.ru',
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[

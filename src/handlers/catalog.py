@@ -377,7 +377,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     category_name = "Не указана"
     if product_info.get('category'):
         category_name = str(product_info['category'].name)
-    text += f"<b>Категория:</b> {esc(category_name)}\n"
+    text += f"<b>Категория:</b> {esc(category_name)}\n\n"
     
     # Сфера применения (обязательное поле)
     spheres_text = "Не указана"
@@ -392,33 +392,35 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     
     # Описание
     description = product_info.get('description')
-    if description is not None:
-        description = str(description).strip()
-        if description and description != '-' and description.lower() != 'null':
-            text += f"<b>Описание:</b>\n{esc(description)}\n\n"
+    if description and description.strip() and description.lower() not in ['-', 'null']:
+        text += f"<b>Описание:</b>\n{esc(description)}\n\n"
 
     # Преимущества, расход и упаковка из сфер применения
     if product_info.get("spheres"):
         for sphere in product_info["spheres"]:
             # Преимущества
             if sphere.get("advantages"):
-                text += "<b>Преимущества:</b>\n"
-                for adv in sphere["advantages"]:
-                    if adv and str(adv).strip():  # Проверяем что преимущество не пустое
-                        text += f"• {esc(str(adv))}\n"
-                text += "\n"
+                if "<b>Преимущества:</b>" not in text:  # Добавляем проверку, чтобы не добавлять повторно
+                    text += "<b>Преимущества:</b>\n"
+                    for adv in sphere["advantages"]:
+                        clean_adv = str(adv).strip().lstrip('•-–— ').strip()
+                        if clean_adv:
+                            text += f"• {esc(clean_adv)}\n"
+                    text += "\n"
             
             # Расход = примечания
             notes = sphere.get("notes")
-            if notes is not None and str(notes).strip():
+            if notes and str(notes).strip() and str(notes).strip() not in ['-','нет', 'null']:
                 text += f"<b>Расход:</b>\n{esc(str(notes))}\n\n"
             
             # Упаковка
             package = sphere.get("package")
-            if package is not None and str(package).strip():
-                text += f"<b>Упаковка:</b>\n{esc(str(package))}\n\n"
-    
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+            if package and str(package).strip():
+                # Если упаковка ещё не была добавлена
+                if "<b>Упаковка:</b>" not in text:
+                    text += f"<b>Упаковка:</b>\n{esc(str(package))}\n\n"
+        
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
 
     # Проверяем есть ли файлы у продукта (документы или медиа)
     has_files = False
@@ -427,7 +429,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     
     if has_files:
         content_button = types.InlineKeyboardButton(
-            text="📄 Показать доступные файлы",
+            text="📄 Документация и Медиа",
             callback_data=f"show_content:{product_id}"
         )
         keyboard.inline_keyboard.append([content_button])

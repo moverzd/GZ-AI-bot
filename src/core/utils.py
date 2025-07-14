@@ -22,6 +22,7 @@ def esc(s: Optional[str]) -> str:
 def split_advantages(raw: Optional[str]) -> List[str]:
     """
     Обработка поля из бд "advantages".
+    Убираем все префиксы-буллиты и возвращаем чистый текст
     """
     if not raw:
         return []
@@ -31,7 +32,7 @@ def split_advantages(raw: Optional[str]) -> List[str]:
     cand = SENTENCES_RE.split(text)
     items = []
     for s in cand:
-        s = s.strip(" .;—")
+        s = s.strip(" .;—•-–— ").strip()
         if s: 
             items.append(s)
     
