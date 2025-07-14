@@ -16,7 +16,7 @@ router = Router()
 async def admin_upload_main_image_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Загрузить главное фото' из админского меню"""
     if not is_admin:
-        await callback.answer("У вас нет прав администратора", show_alert=True)
+        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(UploadMainImage.waiting_product_id)
@@ -24,17 +24,20 @@ async def admin_upload_main_image_callback(callback: types.CallbackQuery, state:
         try:
             # Пытаемся отредактировать как текстовое сообщение
             await callback.message.edit_text(
-                "<b>📷 Загрузка главного изображения</b>\n\n"
+                "<b>🔄🖼️ Загрузка главного изображения</b>\n\n"
                 "Введите ID продукта, для которого хотите загрузить главное изображение:\n\n"
-                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.\n"
+                "ℹ️ Для выхода в панель администратора введите /admin"
+                ,
                 parse_mode="HTML"
             )
         except Exception:
             # Если не получилось (например, сообщение с медиа), отправляем новое
             await callback.message.answer(
-                "<b>📷 Загрузка главного изображения</b>\n\n"
+                "<b>🖼️ Загрузка главного изображения</b>\n\n"
                 "Введите ID продукта, для которого хотите загрузить главное изображение:\n\n"
-                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта."
+                "ℹ️ Для выхода в панель администратора введите /admin",
                 parse_mode="HTML"
             )
             # Пытаемся удалить предыдущее сообщение
@@ -132,7 +135,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             await state.clear()
             return
         
-        # Логика загрузки главного изображения (существующий код)
+        # Логика загрузки главного изображения
         # Сохраняем ID продукта в состоянии
         await state.update_data(product_id=product_id, product_name=product['name'])
         
@@ -186,11 +189,11 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             await state.clear()
             return
         else:
-            response_text += "📷 <b>У продукта пока нет главного изображения</b>\n\n"
+            response_text += "🖼️ <b>У продукта пока нет главного изображения</b>\n\n"
         
         response_text += (
             "<b>Пришлите изображение, которое станет главным для этого продукта</b>\n\n"
-            "⚠️ <i>Принимаются только изображения (JPG, PNG, GIF и т.д.)</i>"
+            "⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF </i>"
         )
         
         await message.answer(response_text, parse_mode="HTML")
@@ -210,7 +213,7 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
     if not message.photo:
         await message.answer(
             "🔴 Пожалуйста, пришлите изображение.\n\n"
-            "Поддерживаются форматы: JPG, PNG, GIF и другие изображения."
+            "⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF </i>"
         )
         return
     
@@ -292,7 +295,7 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
 async def admin_delete_main_image_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Удалить главное фото' из админского меню"""
     if not is_admin:
-        await callback.answer("У вас нет прав администратора", show_alert=True)
+        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(UploadMainImage.waiting_product_id)
@@ -304,7 +307,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
             await callback.message.edit_text(
                 "<b>🗑️🖼️ Удаление главного изображения</b>\n\n"
                 "Введите ID продукта, у которого хотите удалить главное изображение:\n\n"
-                "ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
                 parse_mode="HTML"
             )
         except Exception:
@@ -312,7 +315,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
             await callback.message.answer(
                 "<b>🗑️🖼️ Удаление главного изображения</b>\n\n"
                 "Введите ID продукта, у которого хотите удалить главное изображение:\n\n"
-                "ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
                 parse_mode="HTML"
             )
             # Пытаемся удалить предыдущее сообщение
@@ -371,10 +374,10 @@ async def confirm_delete_main_image(callback: types.CallbackQuery, session: Asyn
                     await callback.message.delete()
                 except Exception:
                     pass  # Игнорируем ошибку удаления
-        await callback.answer("Главное изображение удалено!")
+        await callback.answer("🟢 Главное изображение удалено!")
         
     except Exception as e:
-        await callback.answer(f"Ошибка при удалении изображения: {str(e)}", show_alert=True)
+        await callback.answer(f"🔴 Ошибка при удалении изображения: {str(e)}", show_alert=True)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith('cancel_delete_main_image:'))
@@ -402,7 +405,7 @@ async def cancel_delete_main_image(callback: types.CallbackQuery):
                 await callback.message.delete()
             except Exception:
                 pass  # Игнорируем ошибку удаления
-    await callback.answer("Удаление отменено")
+    await callback.answer("🟢 Удаление отменено")
 
 @router.callback_query(lambda c: c.data and c.data.startswith('replace_main_image:'))
 async def replace_main_image(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
@@ -417,7 +420,7 @@ async def replace_main_image(callback: types.CallbackQuery, state: FSMContext, s
     product = await product_service.get_product_by_id(product_id)
     
     if not product:
-        await callback.answer("Продукт не найден", show_alert=True)
+        await callback.answer("🔴 Продукт не найден", show_alert=True)
         return
     
     # Устанавливаем состояние ожидания изображения
@@ -428,7 +431,7 @@ async def replace_main_image(callback: types.CallbackQuery, state: FSMContext, s
         f"📦 <b>Продукт:</b> {esc(product['name'])}\n\n"
         f"🔄 <b>Замена главного изображения</b>\n\n"
         f"Пришлите новое изображение, которое заменит текущее главное изображение:\n\n"
-        f"⚠️ <i>Принимаются только изображения (JPG, PNG, GIF и т.д.)</i>"
+        f"⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF </i>"
     )
     
     if callback.message and isinstance(callback.message, types.Message):
