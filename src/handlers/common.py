@@ -109,7 +109,11 @@ async def features(callback: types.CallbackQuery):
                 '• Меню администратора по команде /admin\n'
                 '• Добавить продукт - /add_product\n'
                 '• Отредактировать карточку - /edit_product ID_продукта\n'
-                '• Удалить карточку - /delete_product ID_продукта\n',
+                '• Удалить карточку - /delete_product ID_продукта\n'
+                '• Изменить главное фото продукта \n'
+                '• Удалить главное фото продукта \n'
+                '• Добавить файлы к определенному продукту \n'
+                '• Удалить файлы у определенного продукта\n',
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(
                         text="⬅️ Главное меню",
@@ -131,7 +135,11 @@ async def features(callback: types.CallbackQuery):
                 '• Меню администратора по команде /admin\n'
                 '• Добавить продукт - /add_product\n'
                 '• Отредактировать карточку - /edit_product ID_продукта\n'
-                '• Удалить карточку - /delete_product ID_продукта\n',
+                '• Удалить карточку - /delete_product ID_продукта\n'
+                '• Изменить главное фото продукта \n'
+                '• Удалить главное фото продукта \n'
+                '• Добавить файлы к определенному продукту \n'
+                '• Удалить файлы у определенного продукта\n',
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(
                         text="⬅️ Главное меню",

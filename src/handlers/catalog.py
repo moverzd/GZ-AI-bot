@@ -22,12 +22,12 @@ async def catalog_menu(callback: types.CallbackQuery):
     """
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
-            text="📂 По категориям продукции",
-            callback_data="catalog:categories"
-        )],
-        [types.InlineKeyboardButton(
             text="📂 По сферам применения",
             callback_data="catalog:spheres"
+        )],
+        [types.InlineKeyboardButton(
+            text="📂 По категориям продукции",
+            callback_data="catalog:categories"
         )],
         [types.InlineKeyboardButton(
             text="⬅️ Главное меню",
