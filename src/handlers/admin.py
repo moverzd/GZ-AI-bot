@@ -473,10 +473,8 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
             f"🔴 Ошибка при поиске продукта: {str(e)[:100]}"
         )
 
-# Удаляем старый обработчик состояния DeleteProduct.waiting_product_id
-# @router.message(DeleteProduct.waiting_product_id)  # <-- УДАЛЯЕМ ЭТУ ФУНКЦИЮ
 
-# Обработчик кнопки подтверждения удаления (остается без изменений)
+# Обработчик кнопки подтверждения удаления 
 @router.callback_query(lambda c: c.data and c.data.startswith('delete_confirm:'))
 
 async def confirm_delete_product_callback(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
@@ -617,7 +615,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
     if not message.text:
         await message.answer(
             "Пожалуйста, отправьте текст с ID продукта.\n"
-            "Попробуйте еще раз или отправьте /cancel для отмены."
+
         )
         return
         
@@ -635,7 +633,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         if not product_data:
             await message.answer(
                 f"🔴 Продукт с ID {product_id} не найден или уже удален.\n"
-                "Попробуйте еще раз или отправьте /cancel для отмены."
+    
             )
             return
         
@@ -682,8 +680,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
     except ValueError:
         await message.answer(
             "<b>Неверный формат ID</b>\n\n"
-            "Введите число.\n"
-            "Попробуйте еще раз или отправьте /cancel для отмены.",
+            "Введите число.\n",
             parse_mode="HTML"
         )
     except Exception as e:
@@ -693,15 +690,6 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         )
 
 
-@router.message(Command("cancel"))
-async def cancel_operation(message: types.Message, state: FSMContext):
-    """Отмена текущей операции"""
-    await state.clear()
-    await message.answer(
-        "Операция отменена.",
-        parse_mode="HTML"
-    )
-
 # Обработчик ввода ID продукта для редактирования
 @router.message(EditCard.waiting_product_id)
 async def process_edit_product_id(message: types.Message, state: FSMContext, session: AsyncSession):
@@ -709,7 +697,6 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
     if not message.text:
         await message.answer(
             "Пожалуйста, отправьте текст с ID продукта.\n"
-            "Попробуйте еще раз или отправьте /cancel для отмены."
         )
         return
         
@@ -724,7 +711,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         if not product_info:
             await message.answer(
                 f"🔴 Продукт с ID {product_id} не найден или удален.\n"
-                "Попробуйте еще раз или отправьте /cancel для отмены."
+    
             )
             return
         
@@ -746,10 +733,183 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
     except ValueError:
         await message.answer(
             "🔴 Неверный формат ID. Введите число.\n"
-            "Попробуйте еще раз или отправьте /cancel для отмены."
+
         )
     except Exception as e:
         await message.answer(
             f"🔴 Ошибка при поиске продукта: {str(e)[:100]}\n"
             "Попробуйте еще раз."
         )
+
+
+@router.message(Command('get_products'))
+async def get_all_products(message: types.Message, session: AsyncSession, is_admin: bool = False):
+    """Команда для получения всех ID продуктов с их названиями"""
+    if not is_admin:
+        await message.answer("🔴 У вас нет прав администратора")
+        return
+    
+    try:
+        # Получаем все продукты
+        result = await session.execute(select(Product).order_by(Product.id))
+        products = result.scalars().all()
+        
+        if not products:
+            await message.answer("📦 В базе данных нет продуктов")
+            return
+        
+        # Формируем список продуктов
+        text = "<b>📋 Список всех продуктов:</b>\n\n"
+        
+        for product in products:
+            text += f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
+        
+        # Если сообщение слишком длинное, разбиваем на части
+        if len(text) > 4000:
+            # Отправляем по частям
+            messages = []
+            current_message = "<b>📋 Список всех продуктов:</b>\n\n"
+            
+            for product in products:
+                line = f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
+                
+                if len(current_message + line) > 4000:
+                    messages.append(current_message)
+                    current_message = line
+                else:
+                    current_message += line
+            
+            if current_message:
+                messages.append(current_message)
+            
+            # Отправляем все части
+            for i, msg_text in enumerate(messages):
+                if i == 0:
+                    await message.answer(msg_text, parse_mode="HTML")
+                else:
+                    await message.answer(f"<b>📋 Продолжение списка:</b>\n\n{msg_text}", parse_mode="HTML")
+        else:
+            await message.answer(text, parse_mode="HTML")
+            
+    except Exception as e:
+        await message.answer(f"🔴 Ошибка при получении списка продуктов: {str(e)}")
+
+@router.callback_query(lambda c: c.data == 'admin:get_products')
+async def admin_get_products_callback(callback: types.CallbackQuery, session: AsyncSession, is_admin: bool = False):
+    """
+    Обработчик кнопки 'Показать список продукции' из админ меню
+    """
+    if not is_admin:
+        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
+        return
+    
+    try:
+        # Получаем все продукты (включая удаленные для админа)
+        result = await session.execute(select(Product).order_by(Product.id))
+        products = result.scalars().all()
+        
+        if not products:
+            if callback.message and isinstance(callback.message, types.Message):
+                try:
+                    await callback.message.edit_text(
+                        "📦 В базе данных нет продуктов",
+                        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        ]])
+                    )
+                except Exception:
+                    await callback.answer()
+                    await callback.message.delete()
+                    await callback.message.answer(
+                        "📦 В базе данных нет продуктов",
+                        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        ]])
+                    )
+            await callback.answer()
+            return
+        
+        # Формируем список продуктов
+        text = "<b>📋 Список всех продуктов:</b>\n\n"
+        
+        for product in products:
+            text += f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
+        
+        # Создаем клавиатуру
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")]
+        ])
+        
+        # Если сообщение слишком длинное, разбиваем на части
+        if len(text) > 4000:
+            if callback.message and isinstance(callback.message, types.Message):
+                # Отправляем заголовок
+                try:
+                    await callback.message.edit_text(
+                        "<b>📋 Список всех продуктов:</b>\n\n"
+                        "Список большой, отправляю по частям...",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    await callback.answer()
+                    await callback.message.delete()
+                    await callback.message.answer(
+                        "<b>📋 Список всех продуктов:</b>\n\n"
+                        "Список большой, отправляю по частям...",
+                        parse_mode="HTML"
+                    )
+                
+                # Отправляем по частям
+                messages = []
+                current_message = ""
+                
+                for product in products:
+                    line = f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
+                    
+                    if len(current_message + line) > 4000:  
+                        messages.append(current_message)
+                        current_message = line
+                    else:
+                        current_message += line
+                
+                if current_message:
+                    messages.append(current_message)
+                
+                # Отправляем все части
+                for i, msg_text in enumerate(messages):
+                    if i == len(messages) - 1:  # Последнее сообщение с кнопкой
+                        await callback.message.answer(f"<b>📋 Продолжение списка:</b>\n\n{msg_text}", parse_mode="HTML", reply_markup=keyboard)
+                    else:
+                        await callback.message.answer(f"<b>📋 Продолжение списка:</b>\n\n{msg_text}", parse_mode="HTML")
+        else:
+            if callback.message and isinstance(callback.message, types.Message):
+                try:
+                    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+                except Exception:
+                    await callback.answer()
+                    await callback.message.delete()
+                    await callback.message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        
+        await callback.answer()
+            
+    except Exception as e:
+        if callback.message and isinstance(callback.message, types.Message):
+            try:
+                await callback.message.edit_text(
+                    f"🔴 Ошибка при получении списка продуктов: {str(e)[:100]}",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
+                )
+            except Exception:
+                await callback.answer("🔴 Ошибка получения списка", show_alert=True)
+                await callback.message.delete()
+                await callback.message.answer(
+                    f"🔴 Ошибка при получении списка продуктов: {str(e)[:100]}",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
+                )
+        else:
+            await callback.answer("🔴 Ошибка получения списка", show_alert=True)
+# ...existing code...
