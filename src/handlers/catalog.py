@@ -5,7 +5,7 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.services.product_service import CategoryService, ProductService, SphereService
 from src.keyboards.user import get_main_menu_keyboard
-from src.core.utils import esc
+from src.core.utils import esc, truncate_caption
 
 router = Router()
 
@@ -419,8 +419,9 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
                 # Если упаковка ещё не была добавлена
                 if "<b>Упаковка:</b>" not in text:
                     text += f"<b>Упаковка:</b>\n{esc(str(package))}\n\n"
-        
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+    
+    # Инициализируем клавиатуру всегда
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
 
     # Проверяем есть ли файлы у продукта (документы или медиа)
     has_files = False
@@ -469,6 +470,9 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     navigation_buttons.append(main_menu_button)
     
     keyboard.inline_keyboard.append(navigation_buttons)
+
+    # Обрезаем текст если он слишком длинный для caption
+    text = truncate_caption(text)
 
     if product_info.get("main_image"):
         if callback.message and isinstance(callback.message, Message):
@@ -625,7 +629,19 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         )
     ]])
     
-    # Отправляем документы
+    # Проверяем, есть ли вообще файлы
+    if not documents and not media_files:
+        # Если нет ни документов, ни медиа - отправляем одно сообщение
+        await callback.message.answer(
+            f"📂 <b>Файлы для {esc(product_info['name'])}</b>\n\n"
+            "У этого продукта пока нет файлов.",
+            parse_mode="HTML",
+            reply_markup=back_keyboard
+        ) if callback.message else None
+        await callback.answer()
+        return
+    
+    # Отправляем документы ТОЛЬКО если они есть
     if documents:
         doc_text = f"📄 <b>Документы для {esc(product_info['name'])}</b>\n\n"
         
@@ -634,7 +650,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         for doc in documents:
             doc_title = doc.title if doc.title else "Документ"
             button = types.InlineKeyboardButton(
-                text=f"{doc_title}",
+                text=f"📄 {doc_title}",
                 callback_data=f"file:{doc.id}"
             )
             doc_keyboard.inline_keyboard.append([button])
@@ -656,15 +672,8 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
             parse_mode="HTML",
             reply_markup=doc_keyboard
         ) if callback.message else None
-    else:
-        await callback.message.answer(
-            f"📄 <b>Документы для {esc(product_info['name'])}</b>\n\n"
-            "Документы не найдены.",
-            parse_mode="HTML",
-            reply_markup=back_keyboard
-        ) if callback.message else None
     
-    # Отправляем медиа файлы
+    # Отправляем медиа файлы ТОЛЬКО если они есть
     if media_files:
         media_text = f"🖼️ <b>Медиа для {esc(product_info['name'])}</b>\n\n"
         
@@ -674,12 +683,12 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
             media_title = media.title if media.title else "Медиа файл"
             # Определяем иконку по типу файла
             if media.kind == 'image':
-                icon = "📷️"
+                icon = "📷"
             elif media.kind == 'video':
                 icon = "🎥"
             else:
                 icon = "🖼️"
-                
+            
             button = types.InlineKeyboardButton(
                 text=f"{icon} {media_title}",
                 callback_data=f"file:{media.id}"
@@ -703,16 +712,8 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
             parse_mode="HTML",
             reply_markup=media_keyboard
         ) if callback.message else None
-    else:
-        await callback.message.answer(
-            f"🖼 <b>Медиа для {esc(product_info['name'])}</b>\n\n"
-            "Медиа файлы не найдены.",
-            parse_mode="HTML",
-            reply_markup=back_keyboard
-        ) if callback.message else None
     
     await callback.answer()
-
 
 @router.callback_query(lambda c: c.data and c.data.startswith('file:'))
 async def send_file(callback: types.CallbackQuery, session: AsyncSession):

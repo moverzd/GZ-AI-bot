@@ -19,6 +19,15 @@ def esc(s: Optional[str]) -> str:
     """
     return  html.escape(s) if s else "-"
 
+def truncate_caption(text: str, max_length: int = 1020) -> str:
+    """
+    Безопасно обрезает текст для caption Telegram до указанной длины.
+    Лимит caption в Telegram: 1024 символа, оставляем запас.
+    """
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + "..."
+
 def split_advantages(raw: Optional[str]) -> List[str]:
     """
     Обработка поля из бд "advantages".

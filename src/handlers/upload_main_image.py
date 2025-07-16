@@ -8,7 +8,7 @@ from src.handlers.states import UploadMainImage
 from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
 from src.keyboards.admin import get_admin_main_menu_keyboard
-from src.core.utils import esc
+from src.core.utils import esc, truncate_caption
 
 router = Router()
 
@@ -118,6 +118,8 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             # Показываем изображение с подтверждением
             try:
                 file_id = str(current_main_image.file_id)
+                # Обрезаем caption если слишком длинный
+                confirmation_text = truncate_caption(confirmation_text)
                 await message.answer_photo(
                     photo=file_id,
                     caption=confirmation_text,
@@ -172,6 +174,8 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             # Показываем текущее изображение с выбором
             try:
                 file_id = str(current_main_image.file_id)
+                # Обрезаем caption если слишком длинный
+                response_text = truncate_caption(response_text)
                 await message.answer_photo(
                     photo=file_id,
                     caption=response_text,
@@ -274,6 +278,8 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         )
         
         # Отправляем загруженное изображение как подтверждение
+        # Обрезаем caption если слишком длинный
+        success_text = truncate_caption(success_text)
         await message.answer_photo(
             photo=photo.file_id,
             caption=success_text,
