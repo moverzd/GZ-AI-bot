@@ -14,9 +14,7 @@ router = Router()
 
 """
 Функциональность поиска продуктов по названию.
-TODO: улучшить качество поиска, что сейчас не работает:
-- 
-
+ 
 """
 
 @router.message(SearchProduct.waiting_query)
@@ -26,7 +24,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     - Проверка на отправку текста от пользователя
     - очистка FSM состояния
     - SearchService для поиска
-    - 5 результатов поиска
+
     """
     if not message.text:
         await message.answer(
@@ -83,7 +81,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     
     # Создаем список кнопок с найденными продуктами
     buttons = []
-    for product, main_image in search_results[:5]:  # Показываем до 5 результатов
+    for product, main_image in search_results[:]:  
         # Получаем название продукта и преобразуем в строку
         product_name = str(product.name) if product.name is not None else "Без названия"
         # Показываем полное название без сокращений
@@ -117,7 +115,6 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     
     # Показываем список найденных продуктов
     result_text = f"<b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
-    result_text += f"Найдено продуктов: <b>{len(search_results)}</b>\n"
     result_text += "Выберите продукт для просмотра подробной информации:"
     
     await message.answer(
@@ -238,7 +235,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     
     # Создаем список кнопок с найденными продуктами
     buttons = []
-    for product, main_image in search_results[:5]:  # Показываем до 10 результатов
+    for product, main_image in search_results[:]:  # Показываем до 10 результатов
         # Получаем название продукта и преобразуем в строку
         product_name = str(product.name) if product.name is not None else "Без названия"
         # Показываем полное название без сокращений
@@ -272,7 +269,6 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     
     # Показываем список найденных продуктов
     result_text = f" <b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
-    result_text += f"Найдено продуктов: <b>{len(search_results)}</b>\n"
     result_text += "Выберите продукт для просмотра подробной информации:"
     
     if callback.message and isinstance(callback.message, types.Message):
