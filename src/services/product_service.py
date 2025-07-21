@@ -59,10 +59,16 @@ class ProductService:
         result = await self.session.execute(spheres_query)
         spheres = result.scalars().all()
 
+        sphere_product_name = None
+        if spheres:
+            first_sphere = spheres[0]
+            if hasattr(first_sphere, 'product_name') and first_sphere.product_name is not None:
+                sphere_product_name = str(first_sphere.product_name)
+
         # Собираем объект
         product_info = {
             "id": product.id,
-            "name": product.name,
+            "name": sphere_product_name or product.name or "Без Названия",
             "description": None,
             "category": category,
             "main_image": main_image,

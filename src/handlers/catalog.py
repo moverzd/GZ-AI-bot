@@ -256,7 +256,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
 
     for product, _ in products:
         button = types.InlineKeyboardButton(
-            text=f"ID: {product.id} | {str(product.name)}",  # Добавляем ID к названию
+            text=f"{str(product.name)}",  # Не добавлем ID к названию
             callback_data=f"product:{product.id}:category:{category_id}"
         )
         keyboard.inline_keyboard.append([button])
@@ -556,7 +556,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
 
     for product, _ in products:
         button = types.InlineKeyboardButton(
-            text=f"ID: {product.id} | {str(product.name)}",  # Добавляем ID к названию
+        text=f"{str(product.name)}",  # Добавляем ID к названию
             callback_data=f"product:{product.id}:sphere:{sphere_id}"
         )
         keyboard.inline_keyboard.append([button])

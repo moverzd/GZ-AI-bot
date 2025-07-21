@@ -87,7 +87,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
         # Показываем полное название без сокращений
         buttons.append([
             types.InlineKeyboardButton(
-                text=f"ID: {product.id} | {product_name}",
+                text=f"{product_name}",
                 # Добавляем информацию об источнике (search) и запросе
                 callback_data=f"product:{product.id}:search:{query}"
             )
