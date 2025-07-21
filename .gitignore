@@ -1,0 +1,11 @@
+.env
+venv/
+.DS_Store
+
+rag-ai/
+.sql
+
+# python cache
+__pycache__/
+
+
