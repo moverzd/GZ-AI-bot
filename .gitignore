@@ -2,10 +2,12 @@
 venv/
 .DS_Store
 
-rag-ai/
-.sql
-
-# python cache
 __pycache__/
 
+# Database backups
+*.sql
+*.txt
+
+# Just fooling around 
+rag-ai/
 
