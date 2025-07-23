@@ -12,6 +12,7 @@ from src.handlers.states import SearchProduct
 - контактное меню
 - возмжности бота
 - меню поиска
+- базовый автоответчик
 """
 
 
@@ -172,3 +173,31 @@ async def search_menu(callback: types.CallbackQuery, state: FSMContext):
             parse_mode='HTML'
         )
     await callback.answer()
+
+
+# NOTE: ВСЕГДА В КОНЦЕ ФАЙЛА ИНАЧЕ БУДЕТ КОНТЕКСТ НАРУШАТЬСЯ
+@router.message(lambda message: message.text and not message.text.startswith('/'))
+async def context_handler_outer_context(message: types.Message, state: FSMContext):
+    """
+    Базовый автоответчик для текстовых сообщений вне контекста
+    Срабатывает только если:
+    1. Это текстовое сообщение
+    2. Не команда (не начинается с /)
+    3. Пользователь не в FSM состоянии
+    """
+    current_state = await state.get_state()
+    if current_state is not None:
+        return  
+    
+    await message.answer(
+        "Запрос не распознан. Для получения информации о доступных командах, используйте команду /help.",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="🔍 Поиск по продукции", callback_data="menu:search"),
+                types.InlineKeyboardButton(text="📂 Каталог продукции", callback_data="catalog:categories")
+            ],
+            [
+                types.InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu:main")
+            ]
+        ])
+    )

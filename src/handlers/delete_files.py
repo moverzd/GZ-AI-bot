@@ -71,6 +71,7 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
     try:
         product_id = int(message.text.strip())
         
+        product_service = ProductService(session)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -190,23 +191,25 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
         return
     
     file_kind = str(file_record.kind)
-    file_size = file_record.file_size if file_record.file_size else None
-    file_title = str(file_record.title) if file_record.title else 'Без названия'
-    uploaded_at = file_record.uploaded_at if file_record.uploaded_at else None
-    original_filename = str(file_record.original_filename) if file_record.original_filename else None
+    # лучше безопастно через getattr чем как метод?
+    # TODO: узнать об этом :) 
+    file_size = getattr(file_record, 'file_size', None)
+    file_title = getattr(file_record, 'title', None) or 'Без названия'
+    uploaded_at = getattr(file_record, 'uploaded_at', None)
+    original_filename = getattr(file_record, 'original_filename', None)
     
     icon = get_file_icon(file_kind)
     
     size_text = "Неизвестно"
-    if file_size and file_size > 0:
+    if file_size is not None and file_size > 0:
         size_mb = file_size / 1024 / 1024
         size_text = f"{size_mb:.2f} МБ"
     
     upload_date = "Неизвестно"
-    if uploaded_at:
+    if uploaded_at is not None:
         upload_date = uploaded_at.strftime("%d.%m.%Y %H:%M")
     
-    original_name = original_filename if original_filename else "Не указано"
+    original_name = str(original_filename) if original_filename else "Не указано"
     
     confirmation_text = (
         f"⚠️ <b>Подтверждение удаления файла</b>\n\n"
@@ -269,8 +272,8 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
             await callback.answer("Файл не найден", show_alert=True)
             return
         
-        file_title = file_record.title if file_record.title else "Без названия"
-        product_id = file_record.product_id
+        file_title = getattr(file_record, 'title', None) or "Без названия"
+        product_id = getattr(file_record, 'product_id')
         
         # Физически удаляем файл из БД
         await session.execute(
@@ -284,8 +287,8 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
         success_text = (
             f"🟢 <b>Файл успешно удален!</b>\n\n"
             f"📦 <b>Продукт:</b> {esc(product['name'] if product else 'Неизвестен')}\n"
-            f"📄 <b>Удаленный файл:</b> {esc(file_title)}\n\n"
-            f"Что дальше?" # TODO: изменить вот этот текст
+            f"📄 <b>Удаленный файл:</b> {esc(str(file_title))}\n\n"
+            f"Выберите дальнейшее действие:"
         )
         
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[

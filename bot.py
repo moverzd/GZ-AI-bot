@@ -53,7 +53,6 @@ async def main():
     dp.callback_query.middleware(DatabaseSessionMiddleware())
 
     # Подключение роутеров(группа обработчиков) к dispatcher        
-    dp.include_router(common_router) # основное меню
     dp.include_router(catalog_router) # логика каталога
     dp.include_router(search_router) # поисковик
     dp.include_router(admin_router) # админ-панель
@@ -61,6 +60,7 @@ async def main():
     dp.include_router(upload_content_router) # загрузка файлов
     dp.include_router(upload_main_image_router) # загрузка главных изображений
     dp.include_router(delete_files_router) # удаление файлов
+    dp.include_router(common_router) # NOTE: ВСЕГДА В КОНЦЕ
         
     @dp.message(Command('admin'))
     # Message - класс сообщения, очень много полей у него
