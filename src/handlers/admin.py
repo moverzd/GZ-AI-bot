@@ -912,4 +912,3 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                 )
         else:
             await callback.answer("🔴 Ошибка получения списка", show_alert=True)
-# ...existing code...

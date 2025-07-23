@@ -75,7 +75,8 @@ class ProductService:
             "documents": documents,
             "media_files": media_files,
             "all_files": all_files,
-            "spheres": []
+            "spheres": [],
+            "spheres_info": []  # Добавляем для совместимости с handler
         }
 
         descriptions = []
@@ -85,14 +86,17 @@ class ProductService:
             if sphere_desc and sphere_desc.strip() and sphere_desc.lower() not in ['none', 'null', '-']:
                 descriptions.append(sphere_desc)
             
-            product_info["spheres"].append({
+            sphere_data = {
                 "id": sphere.id,
                 "name": sphere.sphere_name,
                 "description": sphere.description,
                 "advantages": advantages,
                 "notes": sphere.notes,
                 "package": sphere.package,
-            })
+            }
+            
+            product_info["spheres"].append(sphere_data)
+            product_info["spheres_info"].append(sphere_data)  # Дублируем для совместимости
 
         if descriptions:
             product_info["description"] = descriptions[0]
@@ -117,22 +121,20 @@ class ProductService:
     async def update_product_field(self, product_id: int, field: str, value: str) -> bool:
         """
         Обновляет конкретное поле продукта
-        
-        Args:
-            product_id: ID продукта
-            field: Название поля для обновления  
-            value: Новое значение
-            
-        Returns:
-            True если обновление прошло успешно, False иначе
         """
         # Поля из таблицы Product  
-        product_fields = ['name']  # убрали short_desc - не редактируем
+        product_fields = ['name']
         # Поля из таблицы ProductSphere
         product_sphere_fields = ['description', 'advantages', 'notes', 'package']
         
         if field in product_fields:
-            return await self.product_repo.update_product_field(product_id, field, value)
+            # Обновляем основную таблицу
+            result = await self.product_repo.update_product_field(product_id, field, value)
+            
+            # Если обновляется название - синхронизируем с ProductSphere
+            if field == 'name' and result:
+                await self.product_repo.sync_product_name_to_spheres(product_id, value)
+            return result
         elif field in product_sphere_fields:
             return await self.product_repo.update_product_sphere_field(product_id, field, value)
         else:
@@ -140,7 +142,7 @@ class ProductService:
 
 class SphereService:
     """
-    Service for working with spheres
+    Сервис для работы со сферами
     """
     def __init__(self, session: AsyncSession):
         self.session = session

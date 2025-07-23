@@ -55,14 +55,6 @@ class ProductRepository:
     async def update_product_field(self, product_id: int, field: str, value: str) -> bool:
         """
         Обновляет конкретное поле продукта
-        
-        Args:
-            product_id: ID продукта
-            field: Название поля для обновления
-            value: Новое значение
-            
-        Returns:
-            True если обновление прошло успешно, False иначе
         """
         try:
             # Проверяем, что продукт существует
@@ -132,4 +124,17 @@ class ProductRepository:
             return False
 
 
-
+    async def sync_product_name_to_spheres(self, product_id: int, new_name: str) -> bool:
+        """
+        Синхронизация названия продукта во все связанные product_spheres
+        """
+        try:
+            await self.session.execute(
+                update(ProductSphere).where(ProductSphere.product_id == product_id)
+                .values(product_name = new_name)
+            )
+            await self.session.commit()
+            return True
+        except Exception as e:
+            await self.session.rollback()
+            return False

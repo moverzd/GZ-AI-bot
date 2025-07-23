@@ -71,8 +71,6 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
     try:
         product_id = int(message.text.strip())
         
-        # Проверяем существование продукта
-        product_service = ProductService(session)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -82,11 +80,10 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
             )
             return
         
-        # Получаем все файлы продукта
         result = await session.execute(
             select(ProductFile).where(
                 ProductFile.product_id == product_id,
-                ProductFile.title.is_not(None)  # Исключаем главные изображения
+                ProductFile.title.is_not(None) 
             ).order_by(ProductFile.uploaded_at.desc())
         )
         files = list(result.scalars().all())
@@ -101,10 +98,8 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
             await state.clear()
             return
         
-        # Отправляем список файлов для удаления
         await show_files_list(message, session, product_id, files, product['name'])
         
-        # Очищаем состояние, так как дальше работаем через callback
         await state.clear()
         
     except ValueError:
@@ -115,37 +110,30 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
 
 async def show_files_list(message_or_callback, session: AsyncSession, product_id: int, files: list, product_name: str, is_callback: bool = False):
     """Показать список файлов для удаления"""
-    # Создаем клавиатуру со списком файлов
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
     
     files_text = f"🗑️ <b>Удаление файлов продукта:</b> {esc(product_name)}\n\n" \
                 f"<b>Всего файлов:</b> {len(files)}\n\n" \
-                "<b>Нажмите на файл, который хотите удалить:</b>\n\n"
+                "<b>Нажмите на кнопку с названием файла, который хотите удалить:</b>\n\n"
     
     for i, file in enumerate(files, 1):
-        # Извлекаем данные из модели безопасно
         file_kind = file.kind
         file_size = file.file_size if hasattr(file, 'file_size') else None
         file_title = file.title if file.title else 'Без названия'
         
-        # Определяем иконку по типу файла
         icon = get_file_icon(file_kind)
         
-        # Размер файла
         size_text = format_file_size(file_size)
         
-        # Добавляем информацию о файле в текст
         files_text += f"{i}. {icon} <b>{esc(file_title)}</b>{size_text}\n"
         files_text += f"   <i>Тип: {file_kind}</i>\n\n"
         
-        # Кнопка для удаления файла
         button = types.InlineKeyboardButton(
             text=f"🗑️ {i}. {file_title}",
             callback_data=f"delete_file:{file.id}"
         )
         keyboard.inline_keyboard.append([button])
     
-    # Кнопка возврата
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
             text="⬅️ Вернуться в админ меню",
@@ -185,7 +173,6 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
     
     file_id = int(callback.data.split(':')[1])
     
-    # Получаем информацию о файле
     result = await session.execute(
         select(ProductFile).where(ProductFile.id == file_id)
     )
@@ -195,7 +182,6 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
         await callback.answer("Файл не найден", show_alert=True)
         return
     
-    # Получаем информацию о продукте
     product_service = ProductService(session)
     product = await product_service.get_product_by_id(file_record.product_id)
     
@@ -203,28 +189,23 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
         await callback.answer("Продукт не найден", show_alert=True)
         return
     
-    # Извлекаем данные из модели безопасно
     file_kind = str(file_record.kind)
     file_size = file_record.file_size if file_record.file_size else None
     file_title = str(file_record.title) if file_record.title else 'Без названия'
     uploaded_at = file_record.uploaded_at if file_record.uploaded_at else None
     original_filename = str(file_record.original_filename) if file_record.original_filename else None
     
-    # Определяем иконку по типу файла
     icon = get_file_icon(file_kind)
     
-    # Размер файла
     size_text = "Неизвестно"
     if file_size and file_size > 0:
         size_mb = file_size / 1024 / 1024
         size_text = f"{size_mb:.2f} МБ"
     
-    # Дата загрузки
     upload_date = "Неизвестно"
     if uploaded_at:
         upload_date = uploaded_at.strftime("%d.%m.%Y %H:%M")
     
-    # Исходное имя файла
     original_name = original_filename if original_filename else "Не указано"
     
     confirmation_text = (
@@ -279,7 +260,6 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
     file_id = int(callback.data.split(':')[1])
     
     try:
-        # Получаем информацию о файле перед удалением
         result = await session.execute(
             select(ProductFile).where(ProductFile.id == file_id)
         )
@@ -298,7 +278,6 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
         )
         await session.commit()
         
-        # Получаем информацию о продукте
         product_service = ProductService(session)
         product = await product_service.get_product_by_id(product_id)
         
@@ -306,7 +285,7 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
             f"🟢 <b>Файл успешно удален!</b>\n\n"
             f"📦 <b>Продукт:</b> {esc(product['name'] if product else 'Неизвестен')}\n"
             f"📄 <b>Удаленный файл:</b> {esc(file_title)}\n\n"
-            f"Что дальше?"
+            f"Что дальше?" # TODO: изменить вот этот текст
         )
         
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
@@ -353,7 +332,6 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
     
     product_id = int(callback.data.split(':')[1])
     
-    # Получаем информацию о продукте
     product_service = ProductService(session)
     product = await product_service.get_product_by_id(product_id)
     
@@ -361,11 +339,10 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
         await callback.answer("Продукт не найден", show_alert=True)
         return
     
-    # Получаем все файлы продукта заново
     result = await session.execute(
         select(ProductFile).where(
             ProductFile.product_id == product_id,
-            ProductFile.title.is_not(None)  # Исключаем главные изображения
+            ProductFile.title.is_not(None)  
         ).order_by(ProductFile.uploaded_at.desc())
     )
     files = list(result.scalars().all())
@@ -391,21 +368,66 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
                 return
         return
     
-    # Показываем список файлов заново
     await show_files_list(callback, session, product_id, files, product['name'], is_callback=True)
     await callback.answer("Удаление отменено")
 
 @router.callback_query(lambda c: c.data and c.data.startswith('delete_more_files:'))
 async def delete_more_files_same_product(callback: types.CallbackQuery, session: AsyncSession):
-    """Продолжить удаление файлов того же продукта"""
+    """
+    Продолжение удаление файла у продукта.
+    """
     if not callback.data:
         return
     
     product_id = int(callback.data.split(':')[1])
+
+    product_service = ProductService(session)
+    product = await product_service.get_product_by_id(product_id)
+
+    if not product:
+        await callback.answer("Продукт не найден!", show_alert = True)
+        return
     
-    # Перенаправляем на функцию отмены (она показывает список файлов)
-    callback.data = f"cancel_delete_file:{product_id}"
-    await cancel_file_deletion(callback, session)
+    result = await session.execute(
+        select(ProductFile).where(ProductFile.product_id == product_id,
+                                  ProductFile.title.is_not(None)).order_by(ProductFile.uploaded_at.desc())
+    )
+    files = list(result.scalars().all())
+
+    if not files:
+            if callback.message and isinstance(callback.message, types.Message):
+                try:
+                    await callback.message.edit_text(
+                        f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
+                        "🔴 У этого продукта больше нет файлов для удаления.",
+                        parse_mode="HTML",
+                        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                            types.InlineKeyboardButton(
+                                text="🏠 Вернуться в админ меню",
+                                callback_data="admin:menu"
+                            )
+                        ]])
+                    )
+                except Exception:
+                    await callback.answer()
+                    await callback.message.delete()
+                    await callback.message.answer(
+                     f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
+                    "🔴 У этого продукта больше нет файлов для удаления.",
+                    parse_mode="HTML",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(
+                            text="🏠 Вернуться в админ меню",
+                            callback_data="admin:menu"
+                        )
+                    ]])
+                )
+
+                await callback.answer("Файлов больше нет")
+                return   
+    
+    await show_files_list(callback, session, product_id, files, product['name'], is_callback= True)
+    await callback.answer()
 
 @router.callback_query(lambda c: c.data == 'admin:menu')
 async def return_to_admin_menu_from_delete(callback: types.CallbackQuery):
