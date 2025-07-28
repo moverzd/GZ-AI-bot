@@ -23,7 +23,6 @@ class Product(Base):
     id = Column(Integer, primary_key = True)
     category_id = Column(Integer, ForeignKey('categories.id'), nullable = False) 
     name = Column(String(255), nullable= False)
-    short_desc = Column(Text)  # добавляем поле для соответствия с БД, но не юзаем его
     created_at = Column(TIMESTAMP)
     updated_at = Column(TIMESTAMP)
     category = relationship('Category', back_populates = 'products')
