@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.services.search_service import SearchService
+from src.services.search import HybridSearchService, LexicalSearchService, SemanticSearchService
 from src.database.repositories import ProductRepository 
 from src.database.product_file_repositories import ProductFileRepository
 from src.core.utils import esc
@@ -12,19 +12,25 @@ from src.handlers.states import SearchProduct
 
 router = Router()
 
+# Глобальная переменная для хранения сервиса эмбеддингов
+# Будет установлена из bot.py при инициализации
+embedding_service = None
+
+
 """
 Функциональность поиска продуктов по названию.
- 
+Использует гибридный поиск с fallback на семантический поиск.
 """
+
 
 @router.message(SearchProduct.waiting_query)
 async def process_search_query(message: types.Message, session: AsyncSession, state: FSMContext):
     """
-    Обработка поискового запроса
+    Обработка поискового запроса.
+    
     - Проверка на отправку текста от пользователя
-    - очистка FSM состояния
-    - SearchService для поиска
-
+    - Очистка FSM состояния
+    - Использование HybridSearchService для поиска
     """
     if not message.text:
         await message.answer(
@@ -50,12 +56,20 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
             ]])
         )
         return
-
+    
     # Очищаем состояние
     await state.clear()
-
-    search_service = SearchService(session)
-    search_results = await search_service.search_products(query)
+    
+    # Создаем сервисы для поиска
+    search_service = await _create_hybrid_search_service(session)
+    
+    # Выполняем поиск
+    search_results = await search_service.find_products_by_query(
+        query=query,
+        category_id=None,  # Можно добавить фильтр по категории из контекста
+        user_id=message.from_user.id,
+        limit=20  # Максимум результатов для лексического поиска
+    )
     
     if not search_results:
         await message.answer(
@@ -81,7 +95,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     
     # Создаем список кнопок с найденными продуктами
     buttons = []
-    for product, main_image in search_results[:]:  
+    for product in search_results[:10]:  # Показываем до 10 результатов
         # Получаем название продукта и преобразуем в строку
         product_name = str(product.name) if product.name is not None else "Без названия"
         # Показываем полное название без сокращений
@@ -96,7 +110,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     # Добавляем кнопки навигации
     buttons.append([
         types.InlineKeyboardButton(
-                text="🔍 Новый поиск", 
+            text="🔍 Новый поиск", 
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
@@ -115,6 +129,11 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     
     # Показываем список найденных продуктов
     result_text = f"<b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
+    
+    # Добавляем информацию о типе поиска, если был использован семантический
+    if len(search_results) <= 3:  # Признак семантического поиска
+        result_text += "💡 <i>Показаны наиболее релевантные результаты</i>\n\n"
+    
     result_text += "Выберите продукт для просмотра подробной информации:"
     
     await message.answer(
@@ -127,9 +146,10 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
 @router.callback_query(lambda c: c.data == 'search:new')
 async def new_search(callback: types.CallbackQuery, state: FSMContext):
     """
-    Новый запрос на поиск
-    Перевод бота в состояние ожидания нового запрсоа
-    Демонстрация инструкции для ввода запроса
+    Новый запрос на поиск.
+    
+    Перевод бота в состояние ожидания нового запроса.
+    Демонстрация инструкции для ввода запроса.
     """
     # Устанавливаем состояние ожидания поискового запроса
     await state.set_state(SearchProduct.waiting_query)
@@ -168,8 +188,8 @@ async def new_search(callback: types.CallbackQuery, state: FSMContext):
 @router.callback_query(lambda c: c.data and c.data.startswith('search:back:'))
 async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSession):
     """
-    Обработчик кнопки "Назад к результатам поиска"
-    Возвращает пользователя к результатам поиска по исходному запросу
+    Обработчик кнопки "Назад к результатам поиска".
+    Возвращает пользователя к результатам поиска по исходному запросу.
     """
     if not callback.data:
         return
@@ -179,8 +199,16 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
         await callback.answer("Поисковый запрос пуст")
         return
     
-    search_service = SearchService(session)
-    search_results = await search_service.search_products(query)
+    # Создаем сервисы для поиска
+    search_service = await _create_hybrid_search_service(session)
+    
+    # Выполняем поиск
+    search_results = await search_service.find_products_by_query(
+        query=query,
+        category_id=None,
+        user_id=callback.from_user.id,
+        limit=20
+    )
     
     if not search_results:
         no_results_text = f"По запросу '{esc(query)}' больше нет результатов.\n" \
@@ -235,7 +263,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     
     # Создаем список кнопок с найденными продуктами
     buttons = []
-    for product, main_image in search_results[:]:  # Показываем до 10 результатов
+    for product in search_results[:10]:  # Показываем до 10 результатов
         # Получаем название продукта и преобразуем в строку
         product_name = str(product.name) if product.name is not None else "Без названия"
         # Показываем полное название без сокращений
@@ -268,7 +296,12 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     
     # Показываем список найденных продуктов
-    result_text = f" <b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
+    result_text = f"<b>Результаты поиска по запросу:</b> {esc(query)}\n\n"
+    
+    # Добавляем информацию о типе поиска, если был использован семантический
+    if len(search_results) <= 3:  # Признак семантического поиска
+        result_text += "💡 <i>Показаны наиболее релевантные результаты</i>\n\n"
+    
     result_text += "Выберите продукт для просмотра подробной информации:"
     
     if callback.message and isinstance(callback.message, types.Message):
@@ -301,3 +334,49 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
                 parse_mode="HTML"
             )
     await callback.answer()
+
+
+async def _create_hybrid_search_service(session: AsyncSession) -> HybridSearchService:
+    """
+    Создает и возвращает настроенный гибридный поисковый сервис.
+    
+    Args:
+        session: Сессия базы данных
+        
+    Returns:
+        Настроенный экземпляр HybridSearchService
+    """
+    # Проверяем, что сервис эмбеддингов инициализирован
+    if not embedding_service:
+        raise RuntimeError("Сервис эмбеддингов не инициализирован")
+    
+    # Создаем сервисы для разных типов поиска
+    lexical_search = LexicalSearchService(session)
+    semantic_search = SemanticSearchService(session, embedding_service)
+    
+    # Создаем и возвращаем гибридный поиск
+    return HybridSearchService(
+        session=session,
+        lexical_search=lexical_search,
+        vector_search=semantic_search
+    )
+
+
+async def initialize_search_handler():
+    """
+    Инициализирует поисковый handler при запуске бота.
+    Должна быть вызвана при старте приложения.
+    """
+    # Инициализируем сервис эмбеддингов
+    await embedding_service.initialize()
+    
+    # Инициализируем сервис синхронизации
+    from src.services.embeddings.sync_service import initialize_sync_service
+    initialize_sync_service(embedding_service)
+    
+    # Опционально: синхронизируем все эмбеддинги при первом запуске
+    # from src.services.embeddings.sync_service import EmbeddingSyncService
+    # sync_service = EmbeddingSyncService(embedding_service)
+    # await sync_service.sync_all_embeddings()
+    
+    logger.info("Поисковый handler инициализирован")

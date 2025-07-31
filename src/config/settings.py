@@ -25,10 +25,14 @@ class Settings:
         # Настройки базы данных
         self.db_host = os.getenv("DB_HOST", "localhost")
         self.db_port = int(os.getenv("DB_PORT", "3306"))
+        if not isinstance(self.db_port, int) or self.db_port <= 0 or self.db_port >= 65535:
+            raise ValueError("DB_PORT должен быть в диапазоне от 0 до 65535")
+
         self.db_user = os.getenv("DB_USER", "root")
         self.db_pass = os.getenv("DB_PASS", None)
         if self.db_pass is None:
-            raise ValueError("DB_PASS is required")
+            raise ValueError ("DB_PASS обязателен!")
+
         self.db_name = os.getenv("DB_NAME")
         if not self.db_name:
             raise ValueError("DB_NAME is required")

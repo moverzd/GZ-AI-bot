@@ -47,4 +47,3 @@ def split_advantages(raw: Optional[str]) -> List[str]:
     
     return items
 
-

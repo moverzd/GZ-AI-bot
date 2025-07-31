@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -20,18 +21,30 @@ from src.handlers.delete_files import router as delete_files_router
 from src.keyboards.user import get_main_menu_keyboard
 from aiogram import Bot, Dispatcher
 
+# Импортируем новые сервисы
+from src.services.embeddings.embedding_service import EmbeddingService
+from src.services.embeddings.sync_service import initialize_sync_service
+
 """
 bot.py:
-Инициализация базы данных, запуск бота, 
+Инициализация обычный и векторной базы данных, запуск бота, 
 handlers: 
 help - все команды
 admin - команды админа
 
 уведомления админам что бот поднялся
-
 """
 
+debug_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(level = logging.INFO, format = debug_format)
+logger = logging.getLogger(__name__)
+
+# Создаем глобальный экземпляр сервиса эмбеддингов
+embedding_service = EmbeddingService()
+
 async def main():
+
+    logger.info("Запуск Telegram бота")
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -83,8 +96,37 @@ async def main():
         # Отправляем админ текст и админ панель
         await message.answer(admin_text, reply_markup=get_admin_main_menu_keyboard(), parse_mode='HTML')
     
-    # Инициализируем базу данных
+    # Инициализируем базу данных с характеристиками
     await init_db()
+    
+    # Инициализируем векторный поиск с новой архитектурой
+    try:
+        # Инициализируем сервис эмбеддингов
+        await embedding_service.initialize()
+        logger.info("✅ Сервис эмбеддингов инициализирован")
+        
+        # Инициализируем сервис синхронизации для автообновления
+        initialize_sync_service(embedding_service)
+        logger.info("✅ Сервис синхронизации эмбеддингов активирован")
+        
+        # Получаем и выводим статистику
+        stats = await embedding_service.get_statistics()
+        logger.info(f"📊 Статистика векторной БД: {stats}")
+        
+        # Опционально: синхронизируем все эмбеддинги при первом запуске
+        # from src.services.embeddings.sync_service import EmbeddingSyncService
+        # sync_service = EmbeddingSyncService(embedding_service)
+        # await sync_service.sync_all_embeddings()
+        # logger.info("✅ Синхронизация эмбеддингов завершена")
+    
+    except Exception as e:
+        logger.error(f"❌ Не удалось инициализировать векторный поиск: {e}")
+        logger.warning("⚠️ Бот будет работать только с лексическим поиском")
+    
+    # Делаем сервис эмбеддингов доступным глобально для handlers
+    # Вместо bot['embedding_service'] используем модуль для хранения
+    import src.handlers.search as search_handler
+    search_handler.embedding_service = embedding_service
         
     # Отправляем уведомление админам о запуске
     if settings.admin_ids:

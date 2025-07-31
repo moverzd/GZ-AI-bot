@@ -1,38 +1,26 @@
-from typing import List, Optional, Dict, Tuple, Any
+from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy import select
 from src.database.repositories import ProductRepository
 from src.database.product_file_repositories import ProductFileRepository
-from src.database.models import Product, Category,ProductSphere, Sphere
+from src.database.models import Product, Category, ProductSphere, Sphere
+from src.services.search.semantic_search import SemanticSearchService
 from src.core.utils import split_advantages
-
-class CategoryService:
-    """
-    Сервис категории продукции
-    """
-    def __init__(self, session: AsyncSession):
-        self.session = session
-        self.product_repo = ProductRepository(session)  # ИСПРАВЛЕНО - используем правильный репозиторий
-        self.file_repo = ProductFileRepository(session)
-    
-    async def get_all_categories(self) -> List[Category]:
-        """
-        Getting all products categories
-        """
-        from sqlalchemy import select
-        query = select(Category)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+from src.services.embeddings.embedding_service import EmbeddingService
+from src.services.search.base import BaseSearchService
 
 
 class ProductService:
     """
     Сервис для продукции
     """
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, embedding_service: EmbeddingService):
         self.session = session
-        self.product_repo = ProductRepository(session)  # Используем репозиторий с методом get_by_category
+        self.product_repo = ProductRepository(session)  # Репозиторий для работы с продуктами
         self.file_repo = ProductFileRepository(session)  # Репозиторий для работы с файлами
+        
+        # Инициализация SemanticSearchService
+        self.semantic_search_service = SemanticSearchService(session, embedding_service)
     
     async def get_product_by_id(self, product_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -49,7 +37,6 @@ class ProductService:
         all_files = await self.file_repo.get_all_files(product_id)
         
         # Получаем категорию
-        from sqlalchemy import select
         category_query = select(Category).where(Category.id == product.category_id)
         category_result = await self.session.execute(category_query)
         category = category_result.scalars().first()
@@ -107,7 +94,6 @@ class ProductService:
         """
         Получаем продукты по категории с изображениями
         """
-        # Вызов метода get_by_category из ProductRepository
         products = await self.product_repo.get_by_category(category_id)
         results = []
         
@@ -122,84 +108,142 @@ class ProductService:
         """
         Обновляет конкретное поле продукта
         """
-        # Поля из таблицы Product  
         product_fields = ['name']
-        # Поля из таблицы ProductSphere
         product_sphere_fields = ['description', 'advantages', 'notes', 'package']
         
         if field in product_fields:
-            # Обновляем основную таблицу
             result = await self.product_repo.update_product_field(product_id, field, value)
-            
-            # Если обновляется название - синхронизируем с ProductSphere
             if field == 'name' and result:
                 await self.product_repo.sync_product_name_to_spheres(product_id, value)
+            
+            # Обновление эмбеддинга продукта
+            product = await self.product_repo.get_by_id(product_id)
+            if product:
+                # Добавляем или обновляем эмбеддинг
+                self.semantic_search_service.embedding_service.add_or_update_product_embedding(product.id, value)
+
             return result
         elif field in product_sphere_fields:
             return await self.product_repo.update_product_sphere_field(product_id, field, value)
         else:
             return False
+    
+    async def search_products_by_query(self, query: str, category_id: Optional[int] = None, limit: int = 3) -> List[Product]:
+        """
+        Выполняет семантический поиск продуктов по запросу.
+        """
+        return await self.semantic_search_service.find_products_by_query(query, category_id, limit)
 
-class SphereService:
+
+class SemanticSearchService(BaseSearchService):
     """
-    Сервис для работы со сферами
+    Сервис для выполнения семантического поиска продуктов.
+    Использует embeddings и косинусное сходство для поиска похожих продуктов.
     """
-    def __init__(self, session: AsyncSession):
+    
+    def __init__(self, session: AsyncSession, embedding_service: EmbeddingService):
         self.session = session
-        self.product_repo = ProductRepository(session)
-        self.file_repo = ProductFileRepository(session)
+        self.embedding_service = embedding_service
     
-    async def get_all_spheres(self) -> List[Sphere]:
+    async def find_products_by_query(
+        self,
+        query: str,
+        category_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        limit: int = 3
+    ) -> List[Product]:
         """
-        Getting all spheres
+        Выполняет семантический поиск продуктов по смысловому сходству.
         """
-        from sqlalchemy import select
-        query = select(Sphere)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        try:
+            # Получаем похожие продукты через семантический поиск
+            similar_products = await self._find_similar_products_by_embedding(
+                query, 
+                limit
+            )
+            
+            if not similar_products:
+                logger.info(f"Семантический поиск: результатов не найдено для '{query}'")
+                return []
+            
+            # Получаем полные данные продуктов из БД
+            products = await self._fetch_products_by_similarity_results(
+                similar_products,
+                category_id
+            )
+            
+            # Сортируем по релевантности
+            sorted_products = self._sort_products_by_relevance(
+                products, 
+                similar_products
+            )
+            
+            logger.info(
+                f"Семантический поиск: найдено {len(sorted_products)} продуктов "
+                f"для запроса '{query}'"
+            )
+            
+            return sorted_products
+            
+        except Exception as e:
+            logger.error(f"Ошибка при выполнении семантического поиска: {e}")
+            return []
     
-    async def get_products_by_sphere(self, sphere_id: int) -> List[Tuple[Product, Optional[str]]]:
+    async def _find_similar_products_by_embedding(
+        self, 
+        query: str, 
+        limit: int
+    ) -> List[Tuple[int, float]]:
         """
-        Get products by sphere with images
+        Находит похожие продукты используя векторные представления.
         """
-        from sqlalchemy import select
+        return await self.embedding_service.search_similar_products(
+            query=query,
+            limit=limit,
+            min_similarity_threshold=0.3
+        )
+    
+    async def _fetch_products_by_similarity_results(
+        self,
+        similar_products: List[Tuple[int, float]],
+        category_id: Optional[int]
+    ) -> List[Product]:
+        """
+        Получает полные данные продуктов из БД по результатам семантического поиска.
+        """
+        product_ids = [product_id for product_id, _ in similar_products]
         
-        # Пробуем JOIN запрос
-        query = select(Product).join(ProductSphere).where(
-            ProductSphere.sphere_id == sphere_id,
+        # Строим запрос
+        query = select(Product).where(
+            Product.id.in_(product_ids),
             Product.is_deleted == False
         )
+        
+        # Добавляем фильтр по категории если указан
+        if category_id:
+            query = query.where(Product.category_id == category_id)
+        
+        # Выполняем запрос
         result = await self.session.execute(query)
         products = result.scalars().all()
         
-        # Если JOIN не дал результатов, пробуем альтернативный метод
-        if not products:
-            return await self.get_products_by_sphere_alternative(sphere_id)
-        
-        results = []
-        for product in products:
-            main_image = await self.file_repo.get_main_image(getattr(product, 'id'))
-            results.append((product, main_image))
-        
-        return results
+        return list(products)
     
-    async def get_products_by_sphere_alternative(self, sphere_id: int) -> List[Tuple[Product, Optional[str]]]:
+    def _sort_products_by_relevance(
+        self,
+        products: List[Product],
+        similar_products: List[Tuple[int, float]]
+    ) -> List[Product]:
         """
-        Alternative method to get products by sphere (without JOIN)
+        Сортирует продукты по релевантности на основе similarity score.
         """
-        from sqlalchemy import select
+        relevance_scores = {
+            product_id: score 
+            for product_id, score in similar_products
+        }
         
-        # Сначала получаем все ProductSphere для данной сферы
-        sphere_query = select(ProductSphere).where(ProductSphere.sphere_id == sphere_id)
-        result = await self.session.execute(sphere_query)
-        product_spheres = result.scalars().all()
-        
-        results = []
-        for product_sphere in product_spheres:
-            # Получаем продукт по ID
-            product = await self.product_repo.get_by_id(getattr(product_sphere, 'product_id'))
-            if product and not getattr(product, 'is_deleted', True):
-                main_image = await self.file_repo.get_main_image(getattr(product, 'id'))
-                results.append((product, main_image))
-        
-        return results
+        return sorted(
+            products,
+            key=lambda p: relevance_scores.get(p.id, 0),
+            reverse=True
+        )
