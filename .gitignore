@@ -9,5 +9,4 @@ __pycache__/
 *.txt
 
 # Just fooling around 
-rag-ai/
-
+/experimental/
