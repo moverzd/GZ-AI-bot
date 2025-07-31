@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.services.product_service import ProductService
 from src.keyboards.user import get_main_menu_keyboard
 from src.core.utils import esc, truncate_caption
-
+from src.handlers.search import embedding_service
 router = Router()
 
 """
@@ -205,7 +205,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
         
     category_id = int(callback.data.split(':')[1])
 
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     products = await product_service.get_products_by_category(category_id)
 
     if not products:
@@ -326,7 +326,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     from_sphere = len(data_parts) >= 3 and data_parts[2] == 'sphere'
     sphere_id = int(data_parts[3]) if from_sphere and len(data_parts) >= 4 else None
 
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product_info = await product_service.get_product_by_id(product_id)
 
     if not product_info:
@@ -608,7 +608,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         
     product_id = int(callback.data.split(':')[1])
     
-    product_service = ProductService(session)
+    product_service = ProductService(session,embedding_service)
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:

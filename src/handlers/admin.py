@@ -8,6 +8,7 @@ from typing import cast
 from src.handlers.states import AddProd, DeleteProduct, EditCard, AddFiles
 from src.database.models import Product, Category, Sphere, ProductSphere, ProductFile
 from src.core.utils import esc
+from src.handlers.search import embedding_service
 
 """
 Административная логика бота. 
@@ -705,7 +706,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         
         # Проверяем существование продукта
         from src.services.product_service import ProductService
-        product_service = ProductService(session)
+        product_service = ProductService(session, embedding_service)
         product_info = await product_service.get_product_by_id(product_id)
         
         if not product_info:

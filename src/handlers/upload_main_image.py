@@ -9,6 +9,7 @@ from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
 from src.keyboards.admin import get_admin_main_menu_keyboard
 from src.core.utils import esc, truncate_caption
+from src.handlers.search import embedding_service
 
 router = Router()
 
@@ -58,7 +59,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         product_id = int(message.text.strip())
         
         # Проверяем существование продукта
-        product_service = ProductService(session)
+        product_service = ProductService(session, embedding_service)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -351,7 +352,7 @@ async def confirm_delete_main_image(callback: types.CallbackQuery, session: Asyn
         await session.commit()
         
         # Получаем информацию о продукте
-        product_service = ProductService(session)
+        product_service = ProductService(session, embedding_service)
         product = await product_service.get_product_by_id(product_id)
         
         success_text = (

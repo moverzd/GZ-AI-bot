@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 
+from src.handlers.search import embedding_service
 from src.handlers.states import AddFiles
 from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
@@ -90,7 +91,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         product_id = int(message.text.strip())
         
         # Проверяем существование продукта
-        product_service = ProductService(session)
+        product_service = ProductService(session, embedding_service)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -299,7 +300,7 @@ async def add_more_files_callback(callback: types.CallbackQuery, state: FSMConte
     product_id = int(callback.data.split(':')[1])
     
     # Получаем информацию о продукте
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product = await product_service.get_product_by_id(product_id)
     
     if not product:

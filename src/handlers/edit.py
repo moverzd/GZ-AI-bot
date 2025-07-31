@@ -8,6 +8,7 @@ from src.services.product_service import ProductService
 from src.handlers.states import EditCard
 from src.core.utils import esc
 from src.keyboards.admin import get_edit_field_keyboard
+from src.handlers.search import embedding_service
 
 router = Router()
 router.message.filter(AdminFilter())
@@ -37,7 +38,7 @@ async def cmd_edit(message: types.Message, state: FSMContext, command:
         return
     
     # Получаем информацию о продукте
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
@@ -94,7 +95,7 @@ async def choose_field(callback: types.CallbackQuery, state: FSMContext, session
     field_display = field_names.get(field_name, field_name)
     
     # Получаем информацию о продукте для отображения текущего значения
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
@@ -147,7 +148,7 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
     new_value = message.text.strip()
     
     # Обновляем значение в базе данных
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     success = await product_service.update_product_field(int(product_id), str(field), new_value)
     
     if success:       # Получаем обновленную информацию о продукте

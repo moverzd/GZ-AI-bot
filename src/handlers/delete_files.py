@@ -8,6 +8,7 @@ from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
 from src.keyboards.admin import get_admin_main_menu_keyboard
 from src.core.utils import esc
+from src.handlers.search import embedding_service
 
 router = Router()
 
@@ -71,7 +72,7 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
     try:
         product_id = int(message.text.strip())
         
-        product_service = ProductService(session)
+        product_service = ProductService(session, embedding_service)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -183,7 +184,7 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
         await callback.answer("Файл не найден", show_alert=True)
         return
     
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product = await product_service.get_product_by_id(file_record.product_id)
     
     if not product:
@@ -281,7 +282,7 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
         )
         await session.commit()
         
-        product_service = ProductService(session)
+        product_service = ProductService(session, embedding_service)
         product = await product_service.get_product_by_id(product_id)
         
         success_text = (
@@ -335,7 +336,7 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
     
     product_id = int(callback.data.split(':')[1])
     
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product = await product_service.get_product_by_id(product_id)
     
     if not product:
@@ -384,7 +385,7 @@ async def delete_more_files_same_product(callback: types.CallbackQuery, session:
     
     product_id = int(callback.data.split(':')[1])
 
-    product_service = ProductService(session)
+    product_service = ProductService(session, embedding_service)
     product = await product_service.get_product_by_id(product_id)
 
     if not product:
