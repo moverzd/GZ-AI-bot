@@ -11,6 +11,8 @@ from .lexical_search import LexicalSearchService
 from .semantic_search import SemanticSearchService
 from .hybrid_search import HybridSearchService
 
+# При импорте модуля будет доступно то что написано снизу
+# Аналог private в методах
 __all__ = [
     'BaseSearchService',
     'LexicalSearchService',

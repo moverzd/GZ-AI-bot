@@ -19,24 +19,9 @@ class LexicalSearchService(BaseSearchService):
     def __init__(self, session: AsyncSession):
         self.session = session
     
-    async def find_products_by_query(
-        self,
-        query: str,
-        category_id: Optional[int] = None,
-        user_id: Optional[int] = None,
-        limit: int = 20
-    ) -> List[Product]:
+    async def find_products_by_query(self,query: str,category_id: Optional[int] = None, user_id: Optional[int] = None,limit: int = 20) -> List[Product]:
         """
         Выполняет лексический поиск продуктов по названию.
-        
-        Args:
-            query: Поисковый запрос
-            category_id: ID категории для фильтрации
-            user_id: ID пользователя (не используется в лексическом поиске)
-            limit: Максимальное количество результатов
-            
-        Returns:
-            Список найденных продуктов
         """
         try:
             normalized_query = self._prepare_query_for_lexical_search(query)
@@ -50,11 +35,7 @@ class LexicalSearchService(BaseSearchService):
             if not search_conditions:
                 return []
             
-            products = await self._execute_search_query(
-                search_conditions, 
-                category_id, 
-                limit
-            )
+            products = await self._execute_search_query(search_conditions, category_id, limit)
             
             logger.info(
                 f"Лексический поиск: найдено {len(products)} продуктов "
@@ -71,13 +52,8 @@ class LexicalSearchService(BaseSearchService):
         """
         Подготавливает запрос для лексического поиска.
         Удаляет специальные символы и нормализует текст.
-        
-        Args:
-            query: Исходный запрос
-            
-        Returns:
-            Подготовленный запрос
         """
+
         # Нормализуем базово
         normalized = self._normalize_search_query(query)
         
@@ -90,12 +66,6 @@ class LexicalSearchService(BaseSearchService):
         """
         Строит условия поиска для SQL запроса.
         Каждое слово должно присутствовать в названии продукта.
-        
-        Args:
-            normalized_query: Нормализованный запрос
-            
-        Returns:
-            Список условий для SQL WHERE
         """
         words = normalized_query.split()
         
@@ -105,34 +75,16 @@ class LexicalSearchService(BaseSearchService):
         # Создаем условие для каждого слова
         conditions = []
         for word in words:
-            conditions.append(
-                func.lower(Product.name).contains(word)
-            )
+            conditions.append(func.lower(Product.name).contains(word))
         
         return conditions
     
-    async def _execute_search_query(
-        self,
-        search_conditions: List,
-        category_id: Optional[int],
-        limit: int
-    ) -> List[Product]:
+    async def _execute_search_query(self,search_conditions: List,category_id: Optional[int],limit: int) -> List[Product]:
         """
         Выполняет SQL запрос для поиска продуктов.
-        
-        Args:
-            search_conditions: Условия поиска
-            category_id: ID категории для фильтрации
-            limit: Максимальное количество результатов
-            
-        Returns:
-            Список найденных продуктов
         """
         # Базовый запрос с условиями поиска
-        query = select(Product).where(
-            or_(*search_conditions),
-            Product.is_deleted == False
-        )
+        query = select(Product).where(or_(*search_conditions),Product.is_deleted == False)
         
         # Добавляем фильтр по категории если указан
         if category_id:
