@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database.product_file_repositories import ProductFileRepository
 from src.database.models import ProductFile
 
-class FileServiceFileService:
+class FileService:
     """
     Сервис менеджмента файлов
     """
@@ -24,7 +24,7 @@ class FileServiceFileService:
             ordering = ordering
         )
 
-    async def save_product_document(self, product_id: int, file_id: str) -> ProductFile:
+    async def save_product_document(self, product_id: int, file_id: str, title: Optional[str] = None) -> ProductFile:
         """
         Сохранить документацию для продукта 
         """
@@ -35,7 +35,7 @@ class FileServiceFileService:
             title = title
         )
     
-async def get_product_files(self, product_id: int, file_type: Optional[str] = None) -> List[ProductFile]:
+    async def get_product_files(self, product_id: int, file_type: Optional[str] = None) -> List[ProductFile]:
         """
         получение файлов продуктов
         """
