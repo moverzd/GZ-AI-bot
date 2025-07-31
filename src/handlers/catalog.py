@@ -3,8 +3,9 @@ from aiogram.filters import StateFilter
 from aiogram import F
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
-#from src.services.product_service import CategoryService, ProductService, SphereService
 from src.services.product_service import ProductService
+from src.services.category_service import CategoryService
+from src.services.sphere_service import SphereService
 from src.keyboards.user import get_main_menu_keyboard
 from src.core.utils import esc, truncate_caption
 from src.handlers.search import embedding_service
