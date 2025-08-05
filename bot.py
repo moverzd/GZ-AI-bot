@@ -24,6 +24,7 @@ from aiogram import Bot, Dispatcher
 # Импортируем новые сервисы
 from src.services.embeddings.embedding_service import EmbeddingService
 from src.services.embeddings.sync_service import initialize_sync_service
+from src.services.file_service import FileService
 
 """
 bot.py:
@@ -39,8 +40,30 @@ debug_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(level = logging.INFO, format = debug_format)
 logger = logging.getLogger(__name__)
 
-# Создаем глобальный экземпляр сервиса эмбеддингов
+# Создаем глобальные экземпляры сервисов
 embedding_service = EmbeddingService()
+
+async def on_startup():
+    # Используем существующую фабрику сессий
+    session = AsyncSessionLocal()
+
+    file_service = FileService(session)
+    
+    # Получаем общую статистику по файлам
+    files_stats = await file_service.get_files_stats()
+    logger.info(f"Статистика файлов: Всего: {files_stats['total_files']}, Скачано: {files_stats['downloaded_files']}, " +
+                f"Не скачано: {files_stats['not_downloaded_files']}, Типы файлов: {files_stats['files_by_type']}")
+    
+    logger.info("Скачивание недостающих файлов...")
+    stats = await file_service.first_files_download()
+    logger.info(f"Скачивание завершено. Успешно: {stats['success']}, Ошибок: {stats['failed']}, Всего: {stats['total']}")
+    
+    # Получаем обновленную статистику после скачивания
+    files_stats = await file_service.get_files_stats()
+    logger.info(f"Статистика файлов после скачивания: Всего: {files_stats['total_files']}, " +
+                f"Скачано: {files_stats['downloaded_files']}, Не скачано: {files_stats['not_downloaded_files']}")
+
+    await session.close()
 
 async def main():
 
@@ -53,6 +76,8 @@ async def main():
     # создаем объект Dispatcher, который отвечает за обработку входящих запросов       
     dp = Dispatcher()
     
+    # Регистрируем функцию on_startup для выполнения при запуске бота
+    dp.startup.register(on_startup)
 
     # middleware - промежуточный код, который выполняется до того, как запрос будет обработан handler'ом
     # в контексте aiogram - компоненты, которые могут изменять, добавлять, проверять данные к каждому апдейту
@@ -113,12 +138,6 @@ async def main():
         stats = await embedding_service.get_statistics()
         logger.info(f"📊 Статистика векторной БД: {stats}")
         
-        # Опционально: синхронизируем все эмбеддинги при первом запуске
-        # from src.services.embeddings.sync_service import EmbeddingSyncService
-        # sync_service = EmbeddingSyncService(embedding_service)
-        # await sync_service.sync_all_embeddings()
-        # logger.info("✅ Синхронизация эмбеддингов завершена")
-    
     except Exception as e:
         logger.error(f"❌ Не удалось инициализировать векторный поиск: {e}")
         logger.warning("⚠️ Бот будет работать только с лексическим поиском")

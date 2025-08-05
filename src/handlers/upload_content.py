@@ -243,22 +243,22 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
         # Генерируем уникальный ordering на основе timestamp для избежания конфликтов
         unique_ordering = int(datetime.now().timestamp())
         
-        # Создаём запись в БД
-        new_file = ProductFile(
-            product_id=data['product_id'],
+        # Используем сервис для загрузки файла
+        from src.services.file_service import FileService
+        file_service = FileService(session)
+        
+        # Скачиваем файл и сохраняем его локально через сервис
+        is_document = file_kind in ['document', 'pdf', 'word', 'excel', 'presentation', 'archive', 'other']
+        new_file = await file_service.download_and_store_file(
             file_id=data['file_id'],
-            kind=file_kind,
+            product_id=data['product_id'],
+            is_document=is_document,
             title=title,
+            file_kind=file_kind,
             file_size=data.get('file_size'),
             mime_type=data.get('mime_type'),
-            original_filename=data.get('original_filename'),
-            uploaded_by=user_id,
-            uploaded_at=datetime.now(),
-            ordering=unique_ordering  # Уникальное значение на основе timestamp
+            original_filename=data.get('original_filename')
         )
-        
-        session.add(new_file)
-        await session.commit()
         
         
         await message.answer(

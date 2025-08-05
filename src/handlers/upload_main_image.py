@@ -248,22 +248,18 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         # Используем timestamp для уникального ordering
         unique_ordering = int(datetime.now().timestamp())
         
-        new_main_image = ProductFile(
+        # Используем FileService для сохранения главного изображения и скачивания его локально
+        from src.services.file_service import FileService
+        file_service = FileService(session)
+        
+        # Скачиваем и сохраняем главное изображение
+        new_main_image = await file_service.save_product_image(
             product_id=product_id,
             file_id=photo.file_id,
-            kind='image',
-            ordering=unique_ordering,
-            is_main_image=True,
-            is_deleted=False,
-            uploaded_by=message.from_user.id if message.from_user else None,
-            uploaded_at=datetime.now(),
-            file_size=photo.file_size,
-            title=None,  # У главного изображения нет title
-            mime_type='image',
-            original_filename=f"main_image_{product_id}.jpg"
+            is_main=True
         )
         
-        session.add(new_main_image)
+        # is_main_image уже установлен в true через FileService
         await session.commit()
         
         file_size_text = ""

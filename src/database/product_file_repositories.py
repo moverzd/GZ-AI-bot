@@ -82,7 +82,8 @@ class ProductFileRepository:
 
     async def add_file(self, product_id: int, file_id: str, kind: str, ordering: int = 0, 
                       title: Optional[str] = None, file_size: Optional[int] = None, mime_type: Optional[str] = None, 
-                      original_filename: Optional[str] = None, uploaded_by: Optional[int] = None) -> ProductFile:
+                      original_filename: Optional[str] = None, uploaded_by: Optional[int] = None, 
+                      local_path: Optional[str] = None, is_main_image: bool = False) -> ProductFile:
         """Добавление файла к продукту"""
         from datetime import datetime
         
@@ -96,6 +97,8 @@ class ProductFileRepository:
             mime_type=mime_type,
             original_filename=original_filename,
             uploaded_by=uploaded_by,
+            local_path=local_path,
+            is_main_image=is_main_image,
             uploaded_at=datetime.now()
         )
         self.session.add(product_file)

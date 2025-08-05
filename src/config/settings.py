@@ -56,3 +56,6 @@ settings = Settings()
 BOT_TOKEN = settings.bot_token
 DATABASE_URL = settings.database_url
 TG_ADMIN_IDS = settings.admin_ids
+
+# Папка для загрузки файлов
+DOWNLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src", "files")

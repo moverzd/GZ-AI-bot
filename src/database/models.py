@@ -105,6 +105,7 @@ class ProductFile(Base):
     file_size = Column(Integer)
     mime_type = Column(String(100))
     original_filename = Column(String(255))
+    local_path = Column(String(512))
     
     # Отношения
     product = relationship("Product", back_populates="files")
