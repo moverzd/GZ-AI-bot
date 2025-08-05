@@ -174,6 +174,29 @@ async def search_menu(callback: types.CallbackQuery, state: FSMContext):
         )
     await callback.answer()
 
+@router.callback_query(lambda c: c.data == 'menu:question')
+async def ai_question_menu(callback: types.CallbackQuery, state: FSMContext):
+    """Меню для вопросов к AI"""
+    from src.handlers.states import AskAI
+    # Устанавливаем состояние ожидания вопроса для AI
+    await state.set_state(AskAI.waiting_question)
+    if callback.message and isinstance(callback.message, Message):
+        await callback.message.edit_text(
+            '<b>🤖 Спросить у AI</b>\n\n'
+            'Задайте текстовый вопрос о продукции Газпромнефть-Битумные Материалы. '
+            'ИИ проверит базу знаний и предоставим ответ, основываясь на доступной информации.\n\n'
+            '<i>Примечание:</i>\n'
+            'Ответы основываются на базе знаний, абсолютная точность не гарантирована. Если информации недостаточно, ИИ предложит уточнить запрос.\n',
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(
+                    text="⬅️ Главное меню",
+                    callback_data="menu:main"
+                )
+            ]]),
+            parse_mode='HTML'
+        )
+    await callback.answer()
+
 
 # NOTE: ВСЕГДА В КОНЦЕ ФАЙЛА ИНАЧЕ БУДЕТ КОНТЕКСТ НАРУШАТЬСЯ
 @router.message(lambda message: message.text and not message.text.startswith('/'))
