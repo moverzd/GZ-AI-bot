@@ -682,6 +682,28 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
             .where(Product.id == product_id)
             .values(is_deleted=True)
         )
+        
+        # Автоматически удаляем все эмбеддинги продукта
+        try:
+            from src.services.auto_chunking_service import AutoChunkingService
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            logger.info(f"[AdminDeleteProduct] Запуск автоматического удаления эмбеддингов для продукта {product_id}")
+            
+            auto_chunking = AutoChunkingService()
+            await auto_chunking.initialize()
+            
+            # Удаляем все эмбеддинги продукта
+            await auto_chunking.embedding_service.delete_product_embeddings(product_id)
+            logger.info(f"[AdminDeleteProduct] Эмбеддинги продукта {product_id} удалены")
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[AdminDeleteProduct] Ошибка при удалении эмбеддингов продукта {product_id}: {e}")
+            # Не прерываем выполнение, если удаление эмбеддингов не удалось
+        
         await session.commit()
         
         # Логируем удаление

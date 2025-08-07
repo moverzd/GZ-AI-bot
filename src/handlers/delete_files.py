@@ -287,11 +287,51 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
         
         file_title = getattr(file_record, 'title', None) or "Без названия"
         product_id = getattr(file_record, 'product_id')
+        local_path = getattr(file_record, 'local_path', None)
         
         # Физически удаляем файл из БД
         await session.execute(
             delete(ProductFile).where(ProductFile.id == file_id)
         )
+        
+        # Автоматически удаляем эмбеддинги, связанные с удаляемым файлом
+        try:
+            if local_path:
+                import logging
+                import os
+                from src.services.auto_chunking_service import AutoChunkingService
+                
+                logger = logging.getLogger(__name__)
+                logger.info(f"[DeleteFiles] Запуск автоматического удаления эмбеддингов для файла {local_path}")
+                
+                auto_chunking = AutoChunkingService()
+                await auto_chunking.initialize()
+                
+                # Формируем абсолютный путь к файлу для удаления эмбеддингов
+                if os.path.isabs(local_path):
+                    absolute_path = local_path
+                else:
+                    from src.config.settings import settings
+                    DOWNLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src", "files")
+                    absolute_path = os.path.join(DOWNLOAD_FOLDER, local_path)
+                
+                # Удаляем эмбеддинги, связанные с этим файлом
+                deleted_count = await auto_chunking.embedding_service.delete_file_embeddings(absolute_path)
+                if deleted_count > 0:
+                    logger.info(f"[DeleteFiles] Удалено {deleted_count} эмбеддингов для файла {absolute_path}")
+                else:
+                    logger.info(f"[DeleteFiles] Эмбеддинги для файла {absolute_path} не найдены или уже удалены")
+            else:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"[DeleteFiles] Файл {file_title} не имеет локального пути, пропускаем удаление эмбеддингов")
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[DeleteFiles] Ошибка при удалении эмбеддингов для файла {file_title}: {e}")
+            # Не прерываем выполнение, если удаление эмбеддингов не удалось
+        
         await session.commit()
         
         product_service = ProductService(session)
