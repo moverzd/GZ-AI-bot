@@ -70,4 +70,18 @@ class UploadMainImage(StatesGroup):
     waiting_image = State()  # Ожидание изображения
 
 
+class AskAI(StatesGroup):
+    """
+    Состояние для вопросов к AI
+    """
+    waiting_question = State()
+
+
+class ChunkingManagement(StatesGroup):
+    """
+    Состояния для управления чанкингом
+    """
+    waiting_product_id = State()
+
+
 

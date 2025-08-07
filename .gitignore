@@ -14,3 +14,6 @@ __pycache__/
 # Files which were downloaded 
 src/files/
 
+# Vector database (generated on server)
+chroma_db/
+

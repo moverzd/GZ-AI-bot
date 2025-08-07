@@ -6,21 +6,18 @@ from src.database.product_file_repositories import ProductFileRepository
 from src.database.models import Product, Category, ProductSphere, Sphere
 from src.services.search.semantic_search import SemanticSearchService
 from src.core.utils import split_advantages
-from src.services.embeddings.embedding_service import EmbeddingService
-from src.services.search.base import BaseSearchService
 
+import logging
+logger = logging.getLogger(__name__)
 
 class ProductService:
     """
     Сервис для продукции
     """
-    def __init__(self, session: AsyncSession, embedding_service: EmbeddingService):
+    def __init__(self, session: AsyncSession):
         self.session = session
         self.product_repo = ProductRepository(session)  # Репозиторий для работы с продуктами
         self.file_repo = ProductFileRepository(session)  # Репозиторий для работы с файлами
-        
-        # Инициализация SemanticSearchService
-        self.semantic_search_service = SemanticSearchService(session, embedding_service)
     
     async def get_product_by_id(self, product_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -106,144 +103,69 @@ class ProductService:
 
     async def update_product_field(self, product_id: int, field: str, value: str) -> bool:
         """
-        Обновляет конкретное поле продукта
+        Обновляет конкретное поле продукта и автоматически переиндексирует его
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         product_fields = ['name']
         product_sphere_fields = ['description', 'advantages', 'notes', 'package']
+        
+        result = False
         
         if field in product_fields:
             result = await self.product_repo.update_product_field(product_id, field, value)
             if field == 'name' and result:
                 await self.product_repo.sync_product_name_to_spheres(product_id, value)
-            
-            # Обновление эмбеддинга продукта
-            product = await self.product_repo.get_by_id(product_id)
-            if product:
-                # Добавляем или обновляем эмбеддинг
-                self.semantic_search_service.embedding_service.add_or_update_product_embedding(product.id, value)
-
-            return result
         elif field in product_sphere_fields:
-            return await self.product_repo.update_product_sphere_field(product_id, field, value)
+            result = await self.product_repo.update_product_sphere_field(product_id, field, value)
         else:
             return False
+        
+        # Автоматическая переиндексация при успешном обновлении любого поля
+        if result:
+            try:
+                from src.services.auto_chunking_service import AutoChunkingService
+                from src.database.connection import AsyncSessionLocal
+                
+                logger.info(f"[ProductService] Запуск автоматической переиндексации продукта {product_id} после изменения поля '{field}'")
+                
+                auto_chunking = AutoChunkingService()
+                session = AsyncSessionLocal()
+                
+                try:
+                    # Получаем информацию о продукте для переиндексации
+                    product_info = await self.get_product_by_id(product_id)
+                    if product_info:
+                        reindex_result = await auto_chunking.reindex_product(
+                            product_id=product_id,
+                            product_name=product_info['name'],
+                            session=session
+                        )
+                        if reindex_result["success"]:
+                            logger.info(f"[ProductService] Автоматическая переиндексация продукта {product_id} завершена успешно: {reindex_result['total_chunks']} чанков")
+                        else:
+                            logger.warning(f"[ProductService] Ошибка автоматической переиндексации продукта {product_id}: {reindex_result.get('error', 'Неизвестная ошибка')}")
+                    else:
+                        logger.warning(f"[ProductService] Продукт {product_id} не найден для переиндексации")
+                finally:
+                    await session.close()
+                    
+            except Exception as e:
+                logger.error(f"[ProductService] Ошибка при автоматической переиндексации продукта {product_id}: {e}")
+                # Не прерываем выполнение, если переиндексация не удалась
+        
+        return result
     
     async def search_products_by_query(self, query: str, category_id: Optional[int] = None, limit: int = 3) -> List[Product]:
         """
         Выполняет семантический поиск продуктов по запросу.
+        Создает временный поисковый сервис для выполнения запроса.
         """
-        return await self.semantic_search_service.find_products_by_query(query, category_id, limit)
+        # Создаем поисковый сервис
+        search_service = SemanticSearchService(self.session)
+        await search_service.embedding_service.initialize()
+        
+        return await search_service.find_products_by_query(query, category_id, limit=limit)
 
 
-class SemanticSearchService(BaseSearchService):
-    """
-    Сервис для выполнения семантического поиска продуктов.
-    Использует embeddings и косинусное сходство для поиска похожих продуктов.
-    """
-    
-    def __init__(self, session: AsyncSession, embedding_service: EmbeddingService):
-        self.session = session
-        self.embedding_service = embedding_service
-    
-    async def find_products_by_query(
-        self,
-        query: str,
-        category_id: Optional[int] = None,
-        user_id: Optional[int] = None,
-        limit: int = 3
-    ) -> List[Product]:
-        """
-        Выполняет семантический поиск продуктов по смысловому сходству.
-        """
-        try:
-            # Получаем похожие продукты через семантический поиск
-            similar_products = await self._find_similar_products_by_embedding(
-                query, 
-                limit
-            )
-            
-            if not similar_products:
-                logger.info(f"Семантический поиск: результатов не найдено для '{query}'")
-                return []
-            
-            # Получаем полные данные продуктов из БД
-            products = await self._fetch_products_by_similarity_results(
-                similar_products,
-                category_id
-            )
-            
-            # Сортируем по релевантности
-            sorted_products = self._sort_products_by_relevance(
-                products, 
-                similar_products
-            )
-            
-            logger.info(
-                f"Семантический поиск: найдено {len(sorted_products)} продуктов "
-                f"для запроса '{query}'"
-            )
-            
-            return sorted_products
-            
-        except Exception as e:
-            logger.error(f"Ошибка при выполнении семантического поиска: {e}")
-            return []
-    
-    async def _find_similar_products_by_embedding(
-        self, 
-        query: str, 
-        limit: int
-    ) -> List[Tuple[int, float]]:
-        """
-        Находит похожие продукты используя векторные представления.
-        """
-        return await self.embedding_service.search_similar_products(
-            query=query,
-            limit=limit,
-            min_similarity_threshold=0.3
-        )
-    
-    async def _fetch_products_by_similarity_results(
-        self,
-        similar_products: List[Tuple[int, float]],
-        category_id: Optional[int]
-    ) -> List[Product]:
-        """
-        Получает полные данные продуктов из БД по результатам семантического поиска.
-        """
-        product_ids = [product_id for product_id, _ in similar_products]
-        
-        # Строим запрос
-        query = select(Product).where(
-            Product.id.in_(product_ids),
-            Product.is_deleted == False
-        )
-        
-        # Добавляем фильтр по категории если указан
-        if category_id:
-            query = query.where(Product.category_id == category_id)
-        
-        # Выполняем запрос
-        result = await self.session.execute(query)
-        products = result.scalars().all()
-        
-        return list(products)
-    
-    def _sort_products_by_relevance(
-        self,
-        products: List[Product],
-        similar_products: List[Tuple[int, float]]
-    ) -> List[Product]:
-        """
-        Сортирует продукты по релевантности на основе similarity score.
-        """
-        relevance_scores = {
-            product_id: score 
-            for product_id, score in similar_products
-        }
-        
-        return sorted(
-            products,
-            key=lambda p: relevance_scores.get(p.id, 0),
-            reverse=True
-        )

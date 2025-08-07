@@ -19,10 +19,10 @@ class HybridSearchService(BaseSearchService):
     2. Если лексический поиск не дал результатов, выполняется семантический поиск
     """
     
-    def __init__(self ,session: AsyncSession,lexical_search: LexicalSearchService, vector_search: SemanticSearchService):
+    def __init__(self, session: AsyncSession):
         self.session = session
-        self.lexical_search = lexical_search
-        self.vector_search = vector_search
+        self.lexical_search = LexicalSearchService(session)
+        self.vector_search = SemanticSearchService(session)
     
     async def find_products_by_query(self, query: str, category_id: Optional[int] = None,user_id: Optional[int] = None,limit: int = 20) -> List[Product]:
         """

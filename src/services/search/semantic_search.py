@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.database.models import Product
-from src.services.embeddings.embedding_service import EmbeddingService
+from src.services.embeddings.unified_embedding_service import UnifiedEmbeddingService
 from .base import BaseSearchService
 
 logger = logging.getLogger(__name__)
@@ -16,15 +16,32 @@ class SemanticSearchService(BaseSearchService):
     Использует embeddings и косинусное сходство для поиска похожих продуктов.
     """
     
-    def __init__(self, session: AsyncSession, embedding_service: EmbeddingService):
+    def __init__(self, session: AsyncSession):
         self.session = session
-        self.embedding_service = embedding_service
+        # Используем унифицированный сервис для поиска по продуктам (без чанкинга)
+        self.embedding_service = UnifiedEmbeddingService(
+            enable_chunking=False,
+            chroma_path="./chroma_db",
+            collection_name="product_embeddings"
+        )
+        # Инициализируем сервис эмбеддингов
+        import asyncio
+        if hasattr(asyncio, '_get_running_loop') and asyncio._get_running_loop() is not None:
+            # Если мы уже в async контексте, планируем инициализацию
+            asyncio.create_task(self.embedding_service.initialize())
+        else:
+            # Если не в async контексте, инициализация будет выполнена при первом вызове
+            pass
     
     async def find_products_by_query(self,query: str,category_id: Optional[int] = None,user_id: Optional[int] = None,limit: int = 3) -> List[Product]:
         """
         Выполняет семантический поиск продуктов по смысловому сходству.
         """
         try:
+            # Убеждаемся, что сервис эмбеддингов инициализирован
+            if not self.embedding_service._is_initialized:
+                await self.embedding_service.initialize()
+            
             # Получаем похожие продукты через семантический поиск
             similar_products = await self._find_similar_products_by_embedding(
                 query, 
@@ -56,7 +73,7 @@ class SemanticSearchService(BaseSearchService):
         """
         Находит похожие продукты используя векторные представления.
         """
-        return await self.embedding_service.search_similar_products(query=query,limit=limit,min_similarity_threshold=0.3)
+        return await self.embedding_service.search_similar_products(query=query,result_limit=limit,min_similarity_threshold=0.3)
     
     async def _fetch_products_by_similarity_results(self,similar_products: List[Tuple[int, float]],category_id: Optional[int]) -> List[Product]:
         """
@@ -90,4 +107,4 @@ class SemanticSearchService(BaseSearchService):
         relevance_scores = {product_id: score for product_id, score in similar_products}
         
         # Сортируем по убыванию релевантности
-        return sorted(products,key=lambda p: relevance_scores.get(p.id, 0),reverse=True)
+        return sorted(products, key=lambda p: relevance_scores.get(getattr(p, 'id', 0), 0), reverse=True)

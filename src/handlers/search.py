@@ -12,11 +12,6 @@ from src.handlers.states import SearchProduct
 
 router = Router()
 
-# Глобальная переменная для хранения сервиса эмбеддингов
-# Будет установлена из bot.py при инициализации
-embedding_service = None
-
-
 """
 Функциональность поиска продуктов по названию.
 Использует гибридный поиск с fallback на семантический поиск.
@@ -346,37 +341,11 @@ async def _create_hybrid_search_service(session: AsyncSession) -> HybridSearchSe
     Returns:
         Настроенный экземпляр HybridSearchService
     """
-    # Проверяем, что сервис эмбеддингов инициализирован
-    if not embedding_service:
-        raise RuntimeError("Сервис эмбеддингов не инициализирован")
+    # Создаем гибридный поиск (он теперь сам инициализирует все необходимые сервисы)
+    hybrid_search = HybridSearchService(session)
     
-    # Создаем сервисы для разных типов поиска
-    lexical_search = LexicalSearchService(session)
-    semantic_search = SemanticSearchService(session, embedding_service)
+    # Инициализируем embedding service для семантического поиска
+    await hybrid_search.vector_search.embedding_service.initialize()
     
-    # Создаем и возвращаем гибридный поиск
-    return HybridSearchService(
-        session=session,
-        lexical_search=lexical_search,
-        vector_search=semantic_search
-    )
+    return hybrid_search
 
-
-async def initialize_search_handler():
-    """
-    Инициализирует поисковый handler при запуске бота.
-    Должна быть вызвана при старте приложения.
-    """
-    # Инициализируем сервис эмбеддингов
-    await embedding_service.initialize()
-    
-    # Инициализируем сервис синхронизации
-    from src.services.embeddings.sync_service import initialize_sync_service
-    initialize_sync_service(embedding_service)
-    
-    # Опционально: синхронизируем все эмбеддинги при первом запуске
-    # from src.services.embeddings.sync_service import EmbeddingSyncService
-    # sync_service = EmbeddingSyncService(embedding_service)
-    # await sync_service.sync_all_embeddings()
-    
-    logger.info("Поисковый handler инициализирован")

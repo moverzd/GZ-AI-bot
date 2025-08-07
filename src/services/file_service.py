@@ -1,5 +1,7 @@
 import os
 import requests
+import pdfplumber
+import logging
 
 from aiogram import Bot
 from aiogram.types import InputFile
@@ -10,13 +12,64 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database.product_file_repositories import ProductFileRepository
 from src.database.models import ProductFile
 
+from src.services.auto_chunking_service import AutoChunkingService
+
+logger = logging.getLogger(__name__)
+
 class FileService:
     """
-    Сервис менеджмента файлов
+    Сервис менеджмента файлов с автоматическим чанкингом
     """
     def __init__(self, session: AsyncSession):
         self.session = session
         self.file_repo = ProductFileRepository(session)
+        # Используем только автоматический сервис чанкинга
+        self.auto_chunking_service = AutoChunkingService()
+    
+
+    async def process_pdf_and_create_embeddings(self, product_id: int, product_name: str, product_dir: str):
+        """
+        Обработка всех PDF файлов в директории, извлечение текста и создание эмбеддингов для продуктов
+        """
+        # Проверяем, что директория существует
+        if not os.path.exists(product_dir):
+            logger.error(f"Директория не существует: {product_dir}")
+            return
+            
+        # Пока что только pdf TODO: добавить xlxs
+        pdf_files = [f for f in os.listdir(product_dir) if f.endswith(".pdf")]
+        
+        if not pdf_files:
+            logger.info(f"В директории {product_dir} не найдено PDF-файлов")
+            return
+
+        # Инициализируем сервис автоматического чанкинга один раз для всех файлов
+        await self.auto_chunking_service.initialize()
+            
+        for file_name in pdf_files:
+            file_path = os.path.join(product_dir, file_name)
+            logger.info(f"Обрабатываем файл: {file_path}")
+
+            try:
+                # Используем улучшенный метод извлечения текста без лимитов
+                from src.services.rag.pdf_extractor import extract_text_from_pdf
+                full_text = await extract_text_from_pdf(file_path, max_pages=None, max_length=None)
+                
+                logger.info(f"Текст из PDF ({file_name}, длина: {len(full_text)} символов): {full_text[:200]}...")
+                
+                # Обрабатываем файл через автоматический чанкинг
+                if full_text and len(full_text) > 100:  # Минимальная длина текста
+                    result = await self.auto_chunking_service.process_uploaded_file(
+                        product_id=product_id,
+                        product_name=product_name, 
+                        file_path=file_path,
+                        file_title=file_name
+                    )
+                    logger.info(f"Автоматический чанкинг для файла {file_name} завершен: {result}")
+                else:
+                    logger.warning(f"Пропускаем обработку {file_name}: текст слишком короткий или отсутствует")
+            except Exception as e:
+                logger.error(f"Ошибка при обработке PDF файла {file_path}: {e}")
 
     async def save_product_image(self, product_id: int, file_id: str, is_main: bool = False) -> ProductFile:
         """
@@ -50,13 +103,19 @@ class FileService:
             print(f"Ошибка при скачивании файла: {e}")
             local_path = None
             
-        return await self.file_repo.add_file(
+        saved_file = await self.file_repo.add_file(
             product_id = product_id,
             file_id = file_id,
             kind = "document",
             title = title,
             local_path = local_path
         )
+
+        if local_path and local_path.endswith('.pdf'):
+            product_name = title if title else f"Продукт {product_id}"
+            await self.process_pdf_and_create_embeddings(product_id,product_name,os.path.dirname(local_path))
+        
+        return saved_file
     
     async def get_product_files(self, product_id: int, file_type: Optional[str] = None) -> List[ProductFile]:
         """
@@ -80,7 +139,8 @@ class FileService:
                                    file_kind: Optional[str] = None, file_size: Optional[int] = None, 
                                    mime_type: Optional[str] = None, original_filename: Optional[str] = None) -> ProductFile:
         """
-        Скачивает файл с Telegram и сохраняет его локально, а также регистрирует информацию о файле в базе данных
+        Скачивает файл с Telegram, сохраняет его локально, регистрирует в БД 
+        и автоматически создает эмбеддинги с чанкингом для PDF файлов
         """
         # Скачиваем файл
         try:
@@ -92,7 +152,8 @@ class FileService:
         # Если file_kind передан напрямую, используем его
         kind = file_kind if file_kind else ("document" if is_document else "image")
 
-        return await self.file_repo.add_file(
+        # Сохраняем файл в БД
+        new_file = await self.file_repo.add_file(
             product_id=product_id,
             file_id=file_id,
             kind=kind,
@@ -102,6 +163,46 @@ class FileService:
             mime_type=mime_type,
             original_filename=original_filename
         )
+        
+        # Автоматическое создание эмбеддингов с чанкингом для PDF файлов
+        if local_path and mime_type == 'application/pdf':
+            try:
+                # Получаем название продукта
+                from src.database.models import Product
+                from sqlalchemy import select
+                
+                query = select(Product.name).where(Product.id == product_id)
+                result = await self.session.execute(query)
+                product_name = result.scalar_one_or_none()
+                
+                if product_name:
+                    # Формируем абсолютный путь к файлу
+                    if os.path.isabs(local_path):
+                        absolute_path = local_path
+                    else:
+                        absolute_path = os.path.join(DOWNLOAD_FOLDER, local_path)
+                    
+                    logger.info(f"[FileService] Запускаем автоматический чанкинг для файла {absolute_path}")
+                    
+                    # Создаем эмбеддинги с чанкингом
+                    chunking_result = await self.auto_chunking_service.process_uploaded_file(
+                        product_id=product_id,
+                        product_name=product_name,
+                        file_path=absolute_path,
+                        file_title=title
+                    )
+                    
+                    if chunking_result["success"]:
+                        logger.info(f"[FileService] Автоматический чанкинг успешен: создано {chunking_result['chunks_created']} эмбеддингов")
+                    else:
+                        logger.warning(f"[FileService] Ошибка автоматического чанкинга: {chunking_result.get('error', 'Неизвестная ошибка')}")
+                else:
+                    logger.warning(f"[FileService] Продукт {product_id} не найден для автоматического чанкинга")
+                    
+            except Exception as e:
+                logger.error(f"[FileService] Ошибка при автоматическом чанкинге файла {local_path}: {e}")
+        
+        return new_file
 
     async def download_file_locally(self, file_id: str, product_id: int) -> str:
         """

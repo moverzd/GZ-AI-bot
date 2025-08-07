@@ -2,7 +2,7 @@ import re
 import logging
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, func
 
 from src.database.models import Product
 from .base import BaseSearchService
@@ -83,8 +83,9 @@ class LexicalSearchService(BaseSearchService):
         """
         Выполняет SQL запрос для поиска продуктов.
         """
-        # Базовый запрос с условиями поиска
-        query = select(Product).where(or_(*search_conditions),Product.is_deleted == False)
+        # Базовый запрос с условиями поиска - используем AND вместо OR
+        # Все слова должны присутствовать в названии продукта
+        query = select(Product).where(*search_conditions,Product.is_deleted == False)
         
         # Добавляем фильтр по категории если указан
         if category_id:
