@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 
-from src.handlers.search import embedding_service
 from src.handlers.states import AddFiles
 from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
@@ -61,10 +60,13 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
         try:
             await callback.message.edit_text(
                 "<b>➕📎 Добавление файлов к продукту</b>\n\n"
-                "Введите ID продукта, к которому хотите добавить файлы:\n\n"
-                "️️ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.\n"
+                "Введите ID продукта, к которому хотите добавить файлы:\n"
+                "️️ℹ️ ID продукта можно найти в карточке продукта.\n"
                 "ℹ️ Для выхода в панель администратора введите /admin",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                ]])
             )
         except Exception:
             # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
@@ -72,10 +74,13 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
             await callback.message.delete()
             await callback.message.answer(
                 "<b>➕📎 Добавление файлов к продукту</b>\n\n"
-                "Введите ID продукта, к которому хотите добавить файлы:\n\n"
-                "️️ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.\n"
+                "Введите ID продукта, к которому хотите добавить файлы:\n"
+                "️️ℹ️ ID продукта можно найти в карточке продукта.\n"
                 "ℹ️ Для выхода в панель администратора введите /admin",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                ]])
             )
             return
     await callback.answer()
@@ -84,14 +89,19 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
 async def process_product_id_for_files(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка ввода ID продукта для добавления файлов"""
     if not message.text:
-        await message.answer("🔴 Сообщение не содержит текста. Попробуйте ещё раз.")
+        await message.answer(
+            "🔴 Сообщение не содержит текста. Попробуйте ещё раз.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         return
         
     try:
         product_id = int(message.text.strip())
         
         # Проверяем существование продукта
-        product_service = ProductService(session, embedding_service)
+        product_service = ProductService(session)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -219,7 +229,12 @@ async def process_unsupported_file(message: types.Message, state: FSMContext):
 async def process_file_title(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка названия файла и сохранение в БД"""
     if not message.text:
-        await message.answer("🔴 Сообщение не содержит текста. Попробуйте ещё раз:")
+        await message.answer(
+            "🔴 Сообщение не содержит текста. Попробуйте ещё раз:",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         return
         
     title = message.text.strip()
@@ -287,7 +302,9 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
         await message.answer(
             f"🔴 Ошибка при сохранении файла: {str(e)}\n\n"
             "Попробуйте ещё раз",
-            reply_markup=get_admin_main_menu_keyboard()
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
         )
         await state.clear()
 
@@ -300,7 +317,7 @@ async def add_more_files_callback(callback: types.CallbackQuery, state: FSMConte
     product_id = int(callback.data.split(':')[1])
     
     # Получаем информацию о продукте
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product = await product_service.get_product_by_id(product_id)
     
     if not product:
@@ -344,7 +361,9 @@ async def return_to_admin_menu(callback: types.CallbackQuery):
                 "<b>🛠️ Панель Администратора</b>\n\n"
                 "Выберите действие:",
                 parse_mode="HTML",
-                reply_markup=get_admin_main_menu_keyboard()
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
             )
         except Exception:
             # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
@@ -354,7 +373,9 @@ async def return_to_admin_menu(callback: types.CallbackQuery):
                 "<b>🛠️ Панель Администратора</b>\n\n"
                 "Выберите действие:",
                 parse_mode="HTML",
-                reply_markup=get_admin_main_menu_keyboard()
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
             )
             return
     await callback.answer()

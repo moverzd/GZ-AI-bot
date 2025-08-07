@@ -6,9 +6,7 @@ from sqlalchemy import select, delete
 from src.handlers.states import DeleteFiles
 from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
-from src.keyboards.admin import get_admin_main_menu_keyboard
 from src.core.utils import esc
-from src.handlers.search import embedding_service
 
 router = Router()
 
@@ -44,20 +42,26 @@ async def admin_delete_files_callback(callback: types.CallbackQuery, state: FSMC
         try:
             await callback.message.edit_text(
                 "<b>🗑📎 Удаление файлов продукта</b>\n\n"
-                "Введите ID продукта, файлы которого хотите удалить:\n\n"
-                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.\n"
+                "Введите ID продукта, файлы которого хотите удалить:\n"
+                "ℹ️ ID продукта можно найти в карточке продукта.\n"
                 "ℹ️ Для выхода в панель администратора введите /admin",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                ]])
             )
         except Exception:
             await callback.answer()
             await callback.message.delete()
             await callback.message.answer(
                 "<b>🗑📎 Удаление файлов продукта</b>\n\n"
-                "Введите ID продукта, файлы которого хотите удалить:\n\n"
-                "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.\n"
+                "Введите ID продукта, файлы которого хотите удалить:\n"
+                "ℹ️ ID продукта можно найти в карточке продукта.\n"
                 "ℹ️ Для выхода в панель администратора введите /admin",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                ]])
             )
             return
     await callback.answer()
@@ -66,13 +70,18 @@ async def admin_delete_files_callback(callback: types.CallbackQuery, state: FSMC
 async def process_product_id_for_delete_files(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка ввода ID продукта для удаления файлов"""
     if not message.text:
-        await message.answer("🔴 Сообщение не содержит текста. Попробуйте ещё раз.")
+        await message.answer(
+            "🔴 Сообщение не содержит текста. Попробуйте ещё раз.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         return
         
     try:
         product_id = int(message.text.strip())
         
-        product_service = ProductService(session, embedding_service)
+        product_service = ProductService(session)
         product = await product_service.get_product_by_id(product_id)
         
         if not product:
@@ -95,7 +104,9 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
                 f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
                 "🔴 У этого продукта нет файлов для удаления.",
                 parse_mode="HTML",
-                reply_markup=get_admin_main_menu_keyboard()
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
             )
             await state.clear()
             return
@@ -184,7 +195,7 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
         await callback.answer("Файл не найден", show_alert=True)
         return
     
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product = await product_service.get_product_by_id(file_record.product_id)
     
     if not product:
@@ -192,6 +203,7 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
         return
     
     file_kind = str(file_record.kind)
+
     # лучше безопастно через getattr чем как метод?
     # TODO: узнать об этом :) 
     file_size = getattr(file_record, 'file_size', None)
@@ -282,7 +294,7 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
         )
         await session.commit()
         
-        product_service = ProductService(session, embedding_service)
+        product_service = ProductService(session)
         product = await product_service.get_product_by_id(product_id)
         
         success_text = (
@@ -336,7 +348,7 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
     
     product_id = int(callback.data.split(':')[1])
     
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product = await product_service.get_product_by_id(product_id)
     
     if not product:
@@ -358,7 +370,9 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
                     f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
                     "🔴 У этого продукта нет файлов для удаления.",
                     parse_mode="HTML",
-                    reply_markup=get_admin_main_menu_keyboard()
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
                 )
             except Exception:
                 await callback.answer()
@@ -367,7 +381,9 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
                     f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
                     "🔴 У этого продукта нет файлов для удаления.",
                     parse_mode="HTML",
-                    reply_markup=get_admin_main_menu_keyboard()
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    ]])
                 )
                 return
         return
@@ -385,7 +401,7 @@ async def delete_more_files_same_product(callback: types.CallbackQuery, session:
     
     product_id = int(callback.data.split(':')[1])
 
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product = await product_service.get_product_by_id(product_id)
 
     if not product:
@@ -431,27 +447,4 @@ async def delete_more_files_same_product(callback: types.CallbackQuery, session:
                 return   
     
     await show_files_list(callback, session, product_id, files, product['name'], is_callback= True)
-    await callback.answer()
-
-@router.callback_query(lambda c: c.data == 'admin:menu')
-async def return_to_admin_menu_from_delete(callback: types.CallbackQuery):
-    """Возврат в админское меню из функции удаления"""
-    if callback.message and isinstance(callback.message, types.Message):
-        try:
-            await callback.message.edit_text(
-                "<b>Администрирование</b>\n\n"
-                "Выберите действие:",
-                parse_mode="HTML",
-                reply_markup=get_admin_main_menu_keyboard()
-            )
-        except Exception:
-            await callback.answer()
-            await callback.message.delete()
-            await callback.message.answer(
-                "<b>Администрирование</b>\n\n"
-                "Выберите действие:",
-                parse_mode="HTML",
-                reply_markup=get_admin_main_menu_keyboard()
-            )
-            return
     await callback.answer()

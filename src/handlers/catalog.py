@@ -8,7 +8,6 @@ from src.services.category_service import CategoryService
 from src.services.sphere_service import SphereService
 from src.keyboards.user import get_main_menu_keyboard
 from src.core.utils import esc, truncate_caption
-from src.handlers.search import embedding_service
 router = Router()
 
 """
@@ -98,7 +97,7 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
     
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
-            text="⬅️ Назад к выбору каталога",
+            text="⬅️ Назад",
             callback_data="menu:catalog"
         )
     ])
@@ -157,7 +156,7 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
     
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
-            text="⬅️ Назад к выбору каталога",
+            text="⬅️ Назад",
             callback_data="menu:catalog"
         )
     ])
@@ -206,7 +205,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
         
     category_id = int(callback.data.split(':')[1])
 
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     products = await product_service.get_products_by_category(category_id)
 
     if not products:
@@ -219,7 +218,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
                         "В этой категории пока нет продуктов.",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                             types.InlineKeyboardButton(
-                                text="⬅️ Назад к категориям",
+                                text="⬅️ Назад",
                                 callback_data="catalog:categories"
                             )
                         ]])
@@ -235,7 +234,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
                         "В этой категории пока нет продуктов.",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                             types.InlineKeyboardButton(
-                                text="⬅️ Назад к категориям",
+                                text="⬅️ Назад",
                                 callback_data="catalog:categories"
                             )
                         ]])
@@ -246,7 +245,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
                     "В этой категории пока нет продуктов.",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(
-                            text="⬅️ Назад к категориям",
+                            text="⬅️ Назад",
                             callback_data="catalog:categories"
                         )
                     ]])
@@ -265,7 +264,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
     
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
-            text="⬅️ Назад к категориям",
+            text="⬅️ Назад",
             callback_data="catalog:categories"
         )
     ])
@@ -327,7 +326,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     from_sphere = len(data_parts) >= 3 and data_parts[2] == 'sphere'
     sphere_id = int(data_parts[3]) if from_sphere and len(data_parts) >= 4 else None
 
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product_info = await product_service.get_product_by_id(product_id)
 
     if not product_info:
@@ -337,22 +336,22 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
             
             if from_search and search_query:
                 back_button = types.InlineKeyboardButton(
-                    text="⬅️ Назад к результатам поиска",
+                    text="⬅️ Назад",
                     callback_data=f"search:back:{search_query}"
                 )
             elif from_category and category_id is not None:
                 back_button = types.InlineKeyboardButton(
-                    text="⬅️ Назад к категории",
+                    text="⬅️ Назад",
                     callback_data=f"category:{category_id}"
                 )
             elif from_sphere and sphere_id is not None:
                 back_button = types.InlineKeyboardButton(
-                    text="⬅️ Назад к сфере",
+                    text="⬅️ Назад",
                     callback_data=f"sphere:{sphere_id}"
                 )
             else:
                 back_button = types.InlineKeyboardButton(
-                    text="⬅️ Назад к категориям",
+                    text="⬅️ Назад",
                     callback_data="catalog:categories"
                 )
             
@@ -443,22 +442,22 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     # Определяем кнопку возврата в зависимости от источника
     if from_search and search_query:
         back_button = types.InlineKeyboardButton(
-            text="⬅️ Назад к результатам поиска",
+            text="⬅️ Назад",
             callback_data=f"search:back:{search_query}"
         )
     elif from_category and category_id is not None:
         back_button = types.InlineKeyboardButton(
-            text="⬅️ Назад к категории",
+            text="⬅️ Назад",
             callback_data=f"category:{category_id}"
         )
     elif from_sphere and sphere_id is not None:
         back_button = types.InlineKeyboardButton(
-            text="⬅️ Назад к сфере применения",
+            text="⬅️ Назад",
             callback_data=f"sphere:{sphere_id}"
         )
     else:
         back_button = types.InlineKeyboardButton(
-            text="⬅️ Назад к каталогу",
+            text="⬅️ Назад",
             callback_data="menu:catalog"
         )
     
@@ -519,7 +518,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
                         "В этой сфере применения пока нет продуктов.",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                             types.InlineKeyboardButton(
-                                text="⬅️ Назад к сферам",
+                                text="⬅️ Назад",
                                 callback_data="catalog:spheres"
                             )
                         ]])
@@ -535,7 +534,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
                         "В этой сфере применения пока нет продуктов.",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                             types.InlineKeyboardButton(
-                                text="⬅️ Назад к сферам",
+                                text="⬅️ Назад",
                                 callback_data="catalog:spheres"
                             )
                         ]])
@@ -546,7 +545,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
                     "В этой сфере применения пока нет продуктов.",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(
-                            text="⬅️ Назад к сферам",
+                            text="⬅️ Назад",
                             callback_data="catalog:spheres"
                         )
                     ]])
@@ -565,7 +564,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
     
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
-            text="⬅️ Назад к сферам",
+            text="⬅️ Назад",
             callback_data="catalog:spheres"
         )
     ])
@@ -609,7 +608,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         
     product_id = int(callback.data.split(':')[1])
     
-    product_service = ProductService(session,embedding_service)
+    product_service = ProductService(session)
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
@@ -622,7 +621,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
     # Создаём кнопки возврата
     back_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
         types.InlineKeyboardButton(
-            text="⬅️ Назад к карточке продукта",
+            text="⬅️ Назад",
             callback_data=f"product:{product_id}"
         ),
         types.InlineKeyboardButton(
@@ -660,7 +659,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         # Добавляем кнопки возврата
         doc_keyboard.inline_keyboard.append([
             types.InlineKeyboardButton(
-                text="⬅️ Назад к карточке продукта",
+                text="⬅️ Назад",
                 callback_data=f"product:{product_id}"
             ),
             types.InlineKeyboardButton(
@@ -700,7 +699,7 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
         # Добавляем кнопки возврата
         media_keyboard.inline_keyboard.append([
             types.InlineKeyboardButton(
-                text="⬅️ Назад к карточке продукта",
+                text="⬅️ Назад",
                 callback_data=f"product:{product_id}"
             ),
             types.InlineKeyboardButton(

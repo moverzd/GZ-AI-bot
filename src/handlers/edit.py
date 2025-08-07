@@ -8,7 +8,6 @@ from src.services.product_service import ProductService
 from src.handlers.states import EditCard
 from src.core.utils import esc
 from src.keyboards.admin import get_edit_field_keyboard
-from src.handlers.search import embedding_service
 
 router = Router()
 router.message.filter(AdminFilter())
@@ -22,11 +21,10 @@ async def cmd_edit(message: types.Message, state: FSMContext, command:
 
     if not command.args:
         await message.answer(
-            "Не указан ID продукта.\n\n"
+            "🔴 Не указан ID продукта.\n\n"
             "<b>Использование:</b>\n"
-            "• <code>/edit_product 123</code>\n"
-            "• <code>/edit 123</code>\n\n"
-            "ℹ️ ID продукта можно узнать в каталоге или поиске - он отображается в описании каждого продукта.",
+            "• <code>/edit_product id_продукта</code>\n"
+            "ℹ️ ID продукта можно найти в карточке продукта.",
             parse_mode="HTML"
         )
         return
@@ -34,15 +32,25 @@ async def cmd_edit(message: types.Message, state: FSMContext, command:
     try:
         product_id = int(command.args)
     except ValueError:
-        await message.answer("Некорректный ID продукта. Используйте число.")
+        await message.answer(
+            "🔴 Некорректный ID продукта. Используйте число.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         return
     
     # Получаем информацию о продукте
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
-        await message.answer(f"Продукт с ID {product_id} не найден или удален.")
+        await message.answer(
+            f"🔴 Продукт с ID {product_id} не найден или удален.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         return
     
     # Сохраняем ID продукта в состоянии
@@ -95,7 +103,7 @@ async def choose_field(callback: types.CallbackQuery, state: FSMContext, session
     field_display = field_names.get(field_name, field_name)
     
     # Получаем информацию о продукте для отображения текущего значения
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
@@ -131,7 +139,12 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
     Сохранение нового значения поля продукта
     """
     if not message.text:
-        await message.answer("Введите текстовое значение:")
+        await message.answer(
+            "🔴 Введите текстовое значение:",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         return
     
     # Получаем данные из состояния
@@ -140,7 +153,12 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
     field = data.get("field")
     
     if not product_id or not field:
-        await message.answer("Ошибка состояния. Начните редактирование заново.")
+        await message.answer(
+            "🔴 Ошибка состояния. Начните редактирование заново.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
         await state.clear()
         return
     
@@ -148,7 +166,7 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
     new_value = message.text.strip()
     
     # Обновляем значение в базе данных
-    product_service = ProductService(session, embedding_service)
+    product_service = ProductService(session)
     success = await product_service.update_product_field(int(product_id), str(field), new_value)
     
     if success:       # Получаем обновленную информацию о продукте
@@ -163,9 +181,19 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
                 parse_mode="HTML"
             )
         else:
-            await message.answer("🟢 Значение поля успешно обновлено!")
+            await message.answer(
+                "🟢 Значение поля успешно обновлено!",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                ]])
+            )
     else:
-        await message.answer("Произошла ошибка при обновлении поля.")
+        await message.answer(
+            "🔴 Произошла ошибка при обновлении поля.",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            ]])
+        )
     
     # Сбрасываем состояние
     await state.clear()
