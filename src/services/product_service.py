@@ -3,12 +3,64 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from src.database.repositories import ProductRepository
 from src.database.product_file_repositories import ProductFileRepository
-from src.database.models import Product, Category, ProductSphere, Sphere
+from src.database.models import Product, Category, ProductSphere, Sphere, ProductPackage
 from src.services.search.semantic_search import SemanticSearchService
 from src.core.utils import split_advantages
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def format_package_info(packages: List[ProductPackage]) -> Optional[str]:
+    """
+    Форматирует информацию об упаковке для отображения в карточке продукта.
+    Если хоть одно поле имеет значение 0, информация об упаковке не отображается.
+    """
+    if not packages:
+        return None
+    
+    # Фильтруем пакеты, где все поля больше 0
+    valid_packages = []
+    for package in packages:
+        try:
+            # Получаем значения атрибутов
+            weight = getattr(package, 'package_weight', 0)
+            pallet_count = getattr(package, 'packages_per_pallet', 0)
+            net = getattr(package, 'net_weight', 0)
+            
+            # Проверяем что все значения больше 0
+            if weight and float(weight) > 0 and pallet_count and int(pallet_count) > 0 and net and float(net) > 0:
+                valid_packages.append(package)
+        except (ValueError, TypeError, AttributeError):
+            continue
+    
+    if not valid_packages:
+        return None
+    
+    # Собираем информацию
+    package_types = []
+    package_weights = []
+    packages_per_pallet = []
+    net_weights = []
+    
+    for package in valid_packages:
+        # Экранируем HTML символы в типе упаковки
+        from src.core.utils import esc
+        package_types.append(esc(str(getattr(package, 'package_type', ''))))
+        weight = float(getattr(package, 'package_weight', 0))
+        package_weights.append(f"{weight:.1f} кг")
+        packages_per_pallet.append(str(getattr(package, 'packages_per_pallet', 0)))
+        net = float(getattr(package, 'net_weight', 0))
+        net_weights.append(f"{net:.1f} кг")
+    
+    # Формируем текст
+    text = "<b>Информация по упаковке:</b>\n"
+    text += f"• Тип упаковки: {', '.join(package_types)}\n"
+    text += f"• Вес одного места: {', '.join(package_weights)}\n" 
+    text += f"• Количество тары на одном паллете: {', '.join(packages_per_pallet)}\n"
+    text += f"• Вес НЕТТО: {', '.join(net_weights)}\n"
+    
+    return text
 
 class ProductService:
     """
@@ -32,6 +84,14 @@ class ProductService:
         documents = await self.file_repo.get_documents(product_id)
         media_files = await self.file_repo.get_media_files(product_id)
         all_files = await self.file_repo.get_all_files(product_id)
+        
+        # Упаковка
+        packages_query = select(ProductPackage).where(
+            ProductPackage.product_id == product_id,
+            ProductPackage.is_active == True
+        )
+        packages_result = await self.session.execute(packages_query)
+        packages = packages_result.scalars().all()
         
         # Получаем категорию
         category_query = select(Category).where(Category.id == product.category_id)
@@ -59,6 +119,7 @@ class ProductService:
             "documents": documents,
             "media_files": media_files,
             "all_files": all_files,
+            "packages": packages,
             "spheres": [],
             "spheres_info": []  # Добавляем для совместимости с handler
         }
@@ -76,7 +137,6 @@ class ProductService:
                 "description": sphere.description,
                 "advantages": advantages,
                 "notes": sphere.notes,
-                "package": sphere.package,
             }
             
             product_info["spheres"].append(sphere_data)
@@ -109,7 +169,7 @@ class ProductService:
         logger = logging.getLogger(__name__)
         
         product_fields = ['name']
-        product_sphere_fields = ['description', 'advantages', 'notes', 'package']
+        product_sphere_fields = ['description', 'advantages', 'notes']
         
         result = False
         
@@ -157,6 +217,135 @@ class ProductService:
         
         return result
     
+    async def get_product_package(self, product_id: int) -> Optional[ProductPackage]:
+        """
+        Получает информацию об упаковке продукта из таблицы product_package
+        """
+        from sqlalchemy import select
+        
+        result = await self.session.execute(
+            select(ProductPackage).where(
+                ProductPackage.product_id == product_id,
+                ProductPackage.is_active == True
+            )
+        )
+        return result.scalars().first()
+    
+    async def update_or_create_product_package(
+        self, 
+        product_id: int, 
+        package_type: str,
+        package_weight: float,
+        packages_per_pallet: int,
+        net_weight: float
+    ) -> bool:
+        """
+        Обновляет или создает информацию об упаковке продукта
+        """
+        try:
+            from sqlalchemy import select
+            
+            # Получаем продукт для проверки существования и получения имени
+            product_result = await self.session.execute(
+                select(Product).where(Product.id == product_id, Product.is_deleted == False)
+            )
+            product = product_result.scalars().first()
+            
+            if not product:
+                return False
+            
+            # Проверяем, есть ли уже запись об упаковке для этого продукта
+            existing_result = await self.session.execute(
+                select(ProductPackage).where(
+                    ProductPackage.product_id == product_id,
+                    ProductPackage.is_active == True
+                )
+            )
+            existing_package = existing_result.scalars().first()
+            
+            if existing_package:
+                # Обновляем существующую запись
+                existing_package.package_type = package_type
+                existing_package.package_weight = package_weight
+                existing_package.packages_per_pallet = packages_per_pallet
+                existing_package.net_weight = net_weight
+            else:
+                # Создаем новую запись
+                new_package = ProductPackage(
+                    product_id=product_id,
+                    product_name=product.name,
+                    package_type=package_type,
+                    package_weight=package_weight,
+                    packages_per_pallet=packages_per_pallet,
+                    net_weight=net_weight,
+                    is_active=True
+                )
+                self.session.add(new_package)
+            
+            await self.session.commit()
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            return False
+    
+    async def get_product_text_for_indexing(self, product_id: int) -> Optional[str]:
+        """
+        Получает текстовое представление продукта для индексации в векторной БД.
+        Включает информацию об упаковке из таблицы product_package.
+        """
+        product_info = await self.get_product_by_id(product_id)
+        if not product_info:
+            return None
+        
+        # Собираем текстовое представление
+        text_parts = []
+        
+        # Базовая информация
+        text_parts.append(f"Продукт: {product_info['name']}")
+        
+        if product_info.get('category'):
+            text_parts.append(f"Категория: {product_info['category'].name}")
+        
+        # Описание
+        if product_info.get('description'):
+            text_parts.append(f"Описание: {product_info['description']}")
+        
+        # Сферы применения
+        spheres = product_info.get('spheres', [])
+        for sphere in spheres:
+            if sphere.get('name'):
+                text_parts.append(f"Сфера применения: {sphere['name']}")
+            
+            # Преимущества
+            if sphere.get('advantages'):
+                advantages_text = " ".join(sphere['advantages'])
+                text_parts.append(f"Преимущества: {advantages_text}")
+            
+            # Расход/примечания
+            if sphere.get('notes'):
+                text_parts.append(f"Расход: {sphere['notes']}")
+        
+        # Информация об упаковке из новой таблицы product_package
+        packages = product_info.get('packages', [])
+        for package in packages:
+            try:
+                weight = getattr(package, 'package_weight', 0)
+                pallet_count = getattr(package, 'packages_per_pallet', 0)
+                net = getattr(package, 'net_weight', 0)
+                package_type = getattr(package, 'package_type', '')
+                
+                # Добавляем информацию об упаковке только если все поля заполнены
+                if weight and float(weight) > 0 and pallet_count and int(pallet_count) > 0 and net and float(net) > 0:
+                    text_parts.append(f"Тип упаковки: {package_type}")
+                    text_parts.append(f"Вес одного места: {weight} кг")
+                    text_parts.append(f"Количество тары на одном паллете: {pallet_count}")
+                    text_parts.append(f"Вес нетто: {net} кг")
+            except (ValueError, TypeError, AttributeError):
+                continue
+        
+        return "\n".join(text_parts)
+
     async def search_products_by_query(self, query: str, category_id: Optional[int] = None, limit: int = 3) -> List[Product]:
         """
         Выполняет семантический поиск продуктов по запросу.

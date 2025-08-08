@@ -20,8 +20,8 @@ class RagService:
         # Используем одну базу данных с коллекцией для чанков
         self.embedding_service = UnifiedEmbeddingService(
             enable_chunking=True,
-            chunk_size=200,  # 200 слов вместо 800
-            chunk_overlap=50,  # 50 слов вместо 150
+            chunk_size=400,  # Увеличиваем до 400 слов для лучшего контекста
+            chunk_overlap=100,  # Увеличиваем перекрытие до 100 слов
             chroma_path="./chroma_db",  # Используем общую базу
             collection_name="product_chunks_embeddings"  # Явно указываем коллекцию для чанков
         )

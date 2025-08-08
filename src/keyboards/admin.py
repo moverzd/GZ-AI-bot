@@ -31,7 +31,7 @@ def get_edit_field_keyboard(product_id: int) -> InlineKeyboardMarkup:
     builder.button(text="Полное описание", callback_data=f"field:description:{product_id}")
     builder.button(text="Преимущества", callback_data=f"field:advantages:{product_id}")
     builder.button(text="Расход", callback_data=f"field:notes:{product_id}")
-    builder.button(text="Упаковка", callback_data=f"field:package:{product_id}")
+    builder.button(text="📦 Упаковка", callback_data=f"edit_package:{product_id}")
     builder.button(text="⬅️ Вернуться в меню", callback_data="menu:main")
     builder.adjust(1)
     return builder.as_markup()

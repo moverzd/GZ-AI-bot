@@ -21,6 +21,16 @@ class EditCard(StatesGroup):
     waiting_value = State() # Ожидание нового значения поля
 
 
+class EditPackage(StatesGroup):
+    """
+    Редактирование упаковки продукта (таблица product_package)
+    """
+    waiting_package_type = State()  # Ожидание типа упаковки
+    waiting_package_weight = State()  # Ожидание веса одного продукта
+    waiting_packages_per_pallet = State()  # Ожидание количества в одном паллете
+    waiting_net_weight = State()  # Ожидание массы нетто
+
+
 class AddProd(StatesGroup):
     """
     Добавление нового продукта

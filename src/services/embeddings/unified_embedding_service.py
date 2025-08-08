@@ -18,8 +18,8 @@ class UnifiedEmbeddingService:
     def __init__(self, 
                  model_name: str = 'deepvk/USER-bge-m3',
                  chroma_path: str = "./chroma_db",
-                 chunk_size: int = 200,  # 200 слов вместо 1000
-                 chunk_overlap: int = 50,  # 50 слов вместо 200
+                 chunk_size: int = 400,  # Увеличиваем до 400 слов для лучшего контекста
+                 chunk_overlap: int = 100,  # Увеличиваем перекрытие до 100 слов
                  enable_chunking: bool = True,
                  collection_name: Optional[str] = None):
         
@@ -182,6 +182,14 @@ class UnifiedEmbeddingService:
                     # Разбиваем на чанки
                     chunks = self._simple_chunk_text(full_text, product_id)
                     logger.info(f"Разбили документ на {len(chunks)} чанков (слов в документе: {word_count})")
+                else:
+                    # Создаем один чанк для короткого документа
+                    chunks = [{
+                        "chunk_id": f"product_{product_id}_chunk_1",
+                        "chunk_index": 1,
+                        "text": full_text
+                    }]
+                    logger.info(f"Документ короткий ({word_count} слов), создаем один чанк")
                 
                 # Создаем эмбеддинги для каждого чанка
                 chunk_ids = []

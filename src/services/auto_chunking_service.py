@@ -18,8 +18,8 @@ class AutoChunkingService:
     """
     
     def __init__(self, 
-                 chunk_size: int = 200,  # 200 слов вместо 800
-                 chunk_overlap: int = 50,  # 50 слов вместо 150
+                 chunk_size: int = 400,  # Увеличиваем до 400 слов для лучшего контекста
+                 chunk_overlap: int = 100,  # Увеличиваем перекрытие до 100 слов
                  chroma_path: str = "./chroma_db"):  # Используем общую базу
         """
         Инициализация сервиса автоматического чанкинга
@@ -110,6 +110,72 @@ class AutoChunkingService:
         
         return result
     
+    async def index_product_metadata(self, 
+                                   product_id: int, 
+                                   product_name: str,
+                                   session: AsyncSession) -> Dict[str, Any]:
+        """
+        Индексирует метаданные продукта (описание, упаковку, сферы применения) 
+        в векторную базу данных отдельно от файлов.
+        
+        Args:
+            product_id: ID продукта
+            product_name: Название продукта
+            session: Сессия базы данных
+            
+        Returns:
+            Результаты индексации метаданных
+        """
+        await self.initialize()
+        
+        result = {
+            "success": False,
+            "product_id": product_id,
+            "chunks_created": 0,
+            "error": None,
+            "processing_time": 0
+        }
+        
+        start_time = datetime.now()
+        
+        try:
+            # Получаем текстовое представление продукта для индексации
+            from src.services.product_service import ProductService
+            product_service = ProductService(session)
+            
+            product_text = await product_service.get_product_text_for_indexing(product_id)
+            
+            if not product_text or len(product_text.strip()) < 50:
+                result["error"] = f"Недостаточно метаданных для индексации продукта {product_id}"
+                return result
+            
+            logger.info(f"[AutoChunking] Индексируем метаданные продукта {product_id}: {product_name}")
+            logger.info(f"[AutoChunking] Текст метаданных: {len(product_text)} символов")
+            
+            # Создаем эмбеддинги для метаданных продукта
+            chunks = await self.embedding_service.create_product_embeddings(
+                product_id=product_id,
+                product_name=product_name,
+                full_text=product_text,
+                file_path=None,  # Это не файл, а метаданные
+                description="Метаданные продукта: описание, упаковка, сферы применения"
+            )
+            
+            result["success"] = True
+            result["chunks_created"] = len(chunks)
+            
+            logger.info(f"[AutoChunking] Создано {len(chunks)} эмбеддингов метаданных для продукта {product_id}")
+            
+        except Exception as e:
+            logger.error(f"[AutoChunking] Ошибка при индексации метаданных продукта {product_id}: {e}")
+            result["error"] = str(e)
+        
+        finally:
+            end_time = datetime.now()
+            result["processing_time"] = (end_time - start_time).total_seconds()
+        
+        return result
+
     async def reindex_product(self, 
                             product_id: int, 
                             product_name: str,
@@ -143,6 +209,14 @@ class AutoChunkingService:
             await self.embedding_service.delete_product_embeddings(product_id)
             logger.info(f"[AutoChunking] Удалены старые эмбеддинги для продукта {product_id}")
             
+            # Сначала индексируем метаданные продукта (описание, упаковка, сферы применения)
+            metadata_result = await self.index_product_metadata(product_id, product_name, session)
+            if metadata_result["success"]:
+                result["total_chunks"] += metadata_result["chunks_created"]
+                logger.info(f"[AutoChunking] Проиндексированы метаданные продукта {product_id}: {metadata_result['chunks_created']} чанков")
+            else:
+                result["errors"].append(f"Метаданные: {metadata_result.get('error', 'Ошибка индексации метаданных')}")
+            
             # Получаем все файлы продукта
             query = select(ProductFile).where(
                 (ProductFile.product_id == product_id) &
@@ -150,10 +224,6 @@ class AutoChunkingService:
             )
             result_files = await session.execute(query)
             files = result_files.scalars().all()
-            
-            if not files:
-                result["error"] = f"У продукта {product_id} нет файлов для индексации"
-                return result
             
             logger.info(f"[AutoChunking] Найдено {len(files)} файлов для переиндексации продукта {product_id}")
             
@@ -180,7 +250,8 @@ class AutoChunkingService:
                 else:
                     result["errors"].append(f"Файл {file_path}: {file_result.get('error', 'Неизвестная ошибка')}")
             
-            result["success"] = result["files_processed"] > 0
+            # Операция считается успешной, если проиндексированы метаданные ИЛИ есть файлы
+            result["success"] = result["total_chunks"] > 0
             
         except Exception as e:
             logger.error(f"[AutoChunking] Ошибка при переиндексации продукта {product_id}: {e}")
@@ -257,7 +328,7 @@ class AutoChunkingService:
         
         return result
     
-    async def _extract_text_from_file(self, file_path: str, max_pages: int = 15) -> str:
+    async def _extract_text_from_file(self, file_path: str, max_pages: int = 30) -> str:
         """Извлечение текста из PDF файла"""
         try:
             import pdfplumber

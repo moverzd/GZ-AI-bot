@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, Enum, Boolean, event
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, Enum, Boolean, event, DECIMAL
 from sqlalchemy.orm import relationship
 from src.database.connection import Base
 
@@ -52,6 +52,11 @@ class Product(Base):
     )
     product_spheres = relationship(
         'ProductSphere', 
+        back_populates='product', 
+        cascade='all, delete-orphan'
+    )
+    packages = relationship(
+        'ProductPackage', 
         back_populates='product', 
         cascade='all, delete-orphan'
     )
@@ -109,6 +114,26 @@ class ProductFile(Base):
     
     # Отношения
     product = relationship("Product", back_populates="files")
+
+
+class ProductPackage(Base):
+    """Упаковка продукта."""
+    
+    __tablename__ = 'product_package'
+    
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey('products.id', ondelete="CASCADE"), nullable=False)
+    product_name = Column(String(255), nullable=False)
+    package_type = Column(String(100), nullable=False)
+    package_weight = Column(DECIMAL(8, 2), nullable=False)
+    packages_per_pallet = Column(Integer, nullable=False)
+    net_weight = Column(DECIMAL(8, 2), nullable=False)
+    created_at = Column(TIMESTAMP)
+    updated_at = Column(TIMESTAMP)
+    is_active = Column(Boolean, nullable=False, default=True)
+    
+    # Отношения
+    product = relationship("Product", back_populates="packages")
 
 
 # Регистрация обработчиков событий SQLAlchemy

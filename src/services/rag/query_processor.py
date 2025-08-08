@@ -10,17 +10,47 @@ class QueryProcessor:
     
     def clean_query(self, query_text: str) -> str:
         """
-        Очистка запроса: удаление пробелов
+        Улучшенная очистка и расширение запроса
         """
         if not query_text or not isinstance(query_text, str):
             return ""
-            
+        
+        # Базовая очистка
         cleaned_query = " ".join(query_text.strip().split())
         
+        # Добавляем синонимы и расширения для лучшего поиска
+        query_expansions = []
+        
+        # Расширяем запрос синонимами битумных терминов
+        expansions = {
+            "битум": ["битумный", "битумная", "асфальт"],
+            "гидроизоляция": ["гидроизоляционный", "водозащита", "влагозащита"],
+            "кровля": ["кровельный", "крыша", "покрытие"],
+            "температура": ["термический", "тепловой", "нагрев", "размягчения"],
+            "применение": ["использование", "область применения", "назначение"],
+            "характеристики": ["свойства", "параметры", "показатели", "спецификация"],
+            "отличие": ["разница", "различие", "сравнение", "отличается"],
+            "мастика": ["герметик", "состав", "материал"],
+            "гибкость": ["эластичность", "пластичность"],
+            "прочность": ["стойкость", "устойчивость"],
+        }
+        
+        # Ищем ключевые слова и добавляем синонимы
+        query_lower = cleaned_query.lower()
+        for key, synonyms in expansions.items():
+            if key in query_lower:
+                query_expansions.extend(synonyms)
+        
+        # Если найдены расширения, добавляем их к запросу
+        if query_expansions:
+            expanded_query = cleaned_query + " " + " ".join(query_expansions)
+        else:
+            expanded_query = cleaned_query
+            
         logger.info(f"Исходный запрос: '{query_text}'")
-        logger.info(f"Очищенный запрос: '{cleaned_query}'")
+        logger.info(f"Расширенный запрос: '{expanded_query}'")
 
-        return cleaned_query
+        return expanded_query
     
     def extract_product_names(self, query: str) -> list:
         """
@@ -28,8 +58,8 @@ class QueryProcessor:
         """
         # Паттерны для поиска названий продуктов
         patterns = [
-            r'[ТтMm]-\d+',  # T-65, Т-75, M-100 и т.д.
-            r'[А-Яа-я]+-\d+',  # ЗВС-65, БТ-75 и т.д.
+            r'[ТтTt]-?\d+',  # T-65, Т-75, T75, Т75, M-100 и т.д.
+            r'[А-Яа-я]+-?\d+',  # ЗВС-65, БТ-75, ЗВС65 и т.д.
             r'«[^»]+»',  # продукты в кавычках
             r'"[^"]+"',  # продукты в двойных кавычках
         ]
@@ -46,7 +76,6 @@ class QueryProcessor:
             if clean_product and clean_product not in unique_products:
                 unique_products.append(clean_product)
 
-       # TODO: сравнить результаты 
-        print(f"Исходный запрос: {query}")
-        print(f"Очищенный запрос: {unique_products}")
+        logger.info(f"Исходный запрос: '{query}'")
+        logger.info(f"Извлеченные продукты: {unique_products}")
         return unique_products

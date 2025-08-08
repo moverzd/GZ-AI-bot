@@ -3,11 +3,11 @@ from aiogram.filters import StateFilter
 from aiogram import F
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.services.product_service import ProductService
+from src.services.product_service import ProductService, format_package_info
 from src.services.category_service import CategoryService
 from src.services.sphere_service import SphereService
 from src.keyboards.user import get_main_menu_keyboard
-from src.core.utils import esc, truncate_caption
+from src.core.utils import esc, truncate_caption, fix_html_tags
 router = Router()
 
 """
@@ -36,44 +36,14 @@ async def catalog_menu(callback: types.CallbackQuery):
         )]
     ])
 
-    try:
-        if callback.message and isinstance(callback.message, Message):
-            # Проверяем, есть ли медиа в сообщении
-            if callback.message.photo or callback.message.document or callback.message.video:
-                # Для сообщений с медиа отправляем новое сообщение
-                await callback.message.answer(
-                    "<b>📂 Каталог продукции</b>\n\n"
-                    "Выберите способ просмотра каталога:",
-                    reply_markup=keyboard,
-                    parse_mode='HTML'
-                )
-                # По возможности удаляем предыдущее сообщение
-                try:
-                    await callback.message.delete()
-                except Exception:
-                    pass  # Игнорируем ошибку, если не удалось удалить сообщение
-            else:
-                # Для текстовых сообщений используем edit_text
-                await callback.message.edit_text(
-                    "<b>📂 Каталог продукции</b>\n\n"
-                    "Выберите способ просмотра каталога:",
-                    reply_markup=keyboard,
-                    parse_mode='HTML'
-                )
-    except Exception:
-        # Если не удается редактировать, отправляем новое
-        if callback.message and isinstance(callback.message, Message) and callback.bot:
-            try:
-                await callback.message.delete()
-            except Exception:
-                pass
-            await callback.bot.send_message(
-                chat_id=callback.message.chat.id,
-                text="<b>📂 Каталог продукции</b>\n\n"
-                     "Выберите способ просмотра каталога:",
-                reply_markup=keyboard,
-                parse_mode='HTML'
-            )
+    if callback.message and isinstance(callback.message, Message):
+        # Всегда отправляем новое сообщение вместо редактирования
+        await callback.message.answer(
+            "<b>📂 Каталог продукции</b>\n\n"
+            "Выберите способ просмотра каталога:",
+            reply_markup=keyboard,
+            parse_mode='HTML'
+        )
     await callback.answer()
 
 
@@ -396,6 +366,10 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     if description and description.strip() and description.lower() not in ['-', 'null']:
         text += f"<b>Описание:</b>\n{esc(description)}\n\n"
 
+    # Информация об упаковке из новой таблицы product_package
+    package_info_text = format_package_info(product_info.get("packages", []))
+    has_new_package_info = bool(package_info_text)
+    
     # Преимущества, расход и упаковка из сфер применения
     if product_info.get("spheres"):
         for sphere in product_info["spheres"]:
@@ -413,13 +387,13 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
             notes = sphere.get("notes")
             if notes and str(notes).strip() and str(notes).strip() not in ['-','нет', 'null']:
                 text += f"<b>Расход:</b>\n{esc(str(notes))}\n\n"
-            
-            # Упаковка
-            package = sphere.get("package")
-            if package and str(package).strip():
-                # Если упаковка ещё не была добавлена
-                if "<b>Упаковка:</b>" not in text:
-                    text += f"<b>Упаковка:</b>\n{esc(str(package))}\n\n"
+    
+    # Добавляем новую информацию об упаковке если она есть
+    if has_new_package_info:
+        text += f"{package_info_text}\n"
+    
+    # Проверяем и исправляем HTML теги перед отправкой
+    text = fix_html_tags(text)
     
     # Инициализируем клавиатуру всегда
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
@@ -472,20 +446,67 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     
     keyboard.inline_keyboard.append(navigation_buttons)
 
-    # Обрезаем текст если он слишком длинный для caption
-    text = truncate_caption(text)
+    # Проверяем и исправляем HTML теги перед отправкой
+    text = fix_html_tags(text)
 
     if product_info.get("main_image"):
-        if callback.message and isinstance(callback.message, Message):
-            await callback.message.edit_media(
-                types.InputMediaPhoto(
-                    media=product_info["main_image"],
-                    caption=text,
+        # Для продуктов с картинкой проверяем длину текста
+        # Если текст больше 1024 символов - отправляем два сообщения
+        # Иначе - одно сообщение с полной информацией
+        
+        if len(text) > 1024:
+            # Создаем краткое описание для caption (только основная информация)
+            short_caption = f"<b>{esc(product_info['name'])}</b>\n"
+            short_caption += f"<b>ID:</b> {product_info['id']}\n\n"
+            
+            # Категория
+            category_name = "Не указана"
+            if product_info.get('category'):
+                category_name = str(product_info['category'].name)
+            short_caption += f"<b>Категория:</b> {esc(category_name)}\n"
+            
+            # Сфера применения
+            spheres_text = "Не указана"
+            if product_info.get("spheres"):
+                spheres_names = []
+                for sphere in product_info["spheres"]:
+                    if sphere.get('name'):
+                        spheres_names.append(sphere['name'])
+                if spheres_names:
+                    spheres_text = ', '.join(spheres_names)
+            short_caption += f"<b>Сфера применения:</b> {esc(spheres_text)}"
+            
+            short_caption = fix_html_tags(short_caption)
+            
+            if callback.message and isinstance(callback.message, Message):
+                # Отправляем картинку с кратким описанием
+                await callback.message.edit_media(
+                    types.InputMediaPhoto(
+                        media=product_info["main_image"],
+                        caption=short_caption,
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=keyboard
+                )
+                
+                # Отправляем полную информацию отдельным сообщением
+                await callback.message.answer(
+                    text,
                     parse_mode="HTML"
-                ),
-                reply_markup=keyboard
-            )
+                )
+        else:
+            # Для коротких текстов отправляем одно сообщение с полной информацией
+            if callback.message and isinstance(callback.message, Message):
+                await callback.message.edit_media(
+                    types.InputMediaPhoto(
+                        media=product_info["main_image"],
+                        caption=text,
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=keyboard
+                )
     else:
+        # Для продуктов без картинки отправляем обычное текстовое сообщение
         if callback.message and isinstance(callback.message, Message):
             await callback.message.edit_text(
                 text,
@@ -598,6 +619,20 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
     await callback.answer()
 
 
+@router.callback_query(lambda c: c.data and c.data.startswith('hide_content:'))
+async def hide_product_content(callback: types.CallbackQuery, session: AsyncSession):
+    """
+    Скрыть файлы продукта - возвращается к карточке продукта
+    """
+    if not callback.data:
+        return
+        
+    product_id = int(callback.data.split(':')[1])
+    
+    # Просто отвечаем что файлы скрыты
+    await callback.answer("Файлы остаются доступны выше ⬆️")
+
+
 @router.callback_query(lambda c: c.data and c.data.startswith('show_content:'))
 async def show_product_content(callback: types.CallbackQuery, session: AsyncSession):
     """
@@ -618,26 +653,12 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
     documents = product_info.get("documents", [])
     media_files = product_info.get("media_files", [])
     
-    # Создаём кнопки возврата
-    back_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data=f"product:{product_id}"
-        ),
-        types.InlineKeyboardButton(
-            text="🏠 Главное меню",
-            callback_data="menu:main"
-        )
-    ]])
-    
     # Проверяем, есть ли вообще файлы
     if not documents and not media_files:
-        # Если нет ни документов, ни медиа - отправляем одно сообщение
         await callback.message.answer(
             f"📂 <b>Файлы для {esc(product_info['name'])}</b>\n\n"
             "У этого продукта пока нет файлов.",
-            parse_mode="HTML",
-            reply_markup=back_keyboard
+            parse_mode="HTML"
         ) if callback.message else None
         await callback.answer()
         return
@@ -655,18 +676,6 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
                 callback_data=f"file:{doc.id}"
             )
             doc_keyboard.inline_keyboard.append([button])
-        
-        # Добавляем кнопки возврата
-        doc_keyboard.inline_keyboard.append([
-            types.InlineKeyboardButton(
-                text="⬅️ Назад",
-                callback_data=f"product:{product_id}"
-            ),
-            types.InlineKeyboardButton(
-                text="🏠 Главное меню",
-                callback_data="menu:main"
-            )
-        ])
         
         await callback.message.answer(
             doc_text,
@@ -695,18 +704,6 @@ async def show_product_content(callback: types.CallbackQuery, session: AsyncSess
                 callback_data=f"file:{media.id}"
             )
             media_keyboard.inline_keyboard.append([button])
-        
-        # Добавляем кнопки возврата
-        media_keyboard.inline_keyboard.append([
-            types.InlineKeyboardButton(
-                text="⬅️ Назад",
-                callback_data=f"product:{product_id}"
-            ),
-            types.InlineKeyboardButton(
-                text="🏠 Главное меню",
-                callback_data="menu:main"
-            )
-        ])
         
         await callback.message.answer(
             media_text,
@@ -740,11 +737,12 @@ async def send_file(callback: types.CallbackQuery, session: AsyncSession):
             await callback.answer("Файл не найден", show_alert=True)
             return
         
-        # Отправляем файл пользователю
+        # Отправляем файл пользователю без кнопок навигации
         if callback.message and file_record:
             file_kind = str(file_record.kind)
             file_id = str(file_record.file_id)
             
+            # Все файлы отправляем без кнопок навигации
             if file_kind == 'image':
                 await callback.message.answer_photo(photo=file_id)
             elif file_kind == 'video':
