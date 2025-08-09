@@ -9,7 +9,7 @@ def get_admin_main_menu_keyboard() -> InlineKeyboardMarkup:
         Разметка с админскими кнопками
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text = "📋📦 Показать весь список продуктов", callback_data= "admin:get_products")
+    builder.button(text = "📋📦 Показать список продуктов", callback_data= "admin:get_products")
     builder.button(text="➕📦 Добавить продукт", callback_data="admin:add_product")
     builder.button(text="✏️📦 Отредактировать продукт", callback_data="admin:edit_product")
     builder.button(text="️🗑️📦 Удалить продукт", callback_data="admin:delete_product")
@@ -31,8 +31,8 @@ def get_edit_field_keyboard(product_id: int) -> InlineKeyboardMarkup:
     builder.button(text="Полное описание", callback_data=f"field:description:{product_id}")
     builder.button(text="Преимущества", callback_data=f"field:advantages:{product_id}")
     builder.button(text="Расход", callback_data=f"field:notes:{product_id}")
-    builder.button(text="📦 Упаковка", callback_data=f"edit_package:{product_id}")
-    builder.button(text="⬅️ Вернуться в меню", callback_data="menu:main")
+    builder.button(text="Упаковка", callback_data=f"edit_package:{product_id}")
+    builder.button(text="⬅️ Вернуться в админ-меню", callback_data="admin:menu")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -42,6 +42,6 @@ def get_delete_confirm_keyboard(product_id: int) -> InlineKeyboardMarkup:
     """
     builder = InlineKeyboardBuilder()
     builder.button(text="Подтвердить удаление", callback_data=f"confirm_delete:{product_id}")
-    builder.button(text="Отмена", callback_data=f"cancel_delete:{product_id}")
+    builder.button(text="Отмена", callback_data="admin:menu")
     builder.adjust(1)
     return builder.as_markup()

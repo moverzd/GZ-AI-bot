@@ -68,7 +68,7 @@ async def admin_add_product_callback(callback: types.CallbackQuery, state: FSMCo
     
     # Создаем клавиатуру с кнопкой "Назад"
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     
     if callback.message and isinstance(callback.message, types.Message):
@@ -105,7 +105,7 @@ async def admin_edit_product_callback(callback: types.CallbackQuery, state: FSMC
     
     # Создаем клавиатуру с кнопкой "Назад"
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     
     if callback.message and isinstance(callback.message, types.Message):
@@ -144,7 +144,7 @@ async def admin_delete_product_callback(callback: types.CallbackQuery, state: FS
     
     # Создаем клавиатуру с кнопкой "Назад"
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     
     if callback.message and isinstance(callback.message, types.Message):
@@ -181,7 +181,7 @@ async def start_add_product(message: types.Message, state: FSMContext, is_admin:
         await message.answer(
             "🔴 У вас нет прав администратора",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -190,7 +190,7 @@ async def start_add_product(message: types.Message, state: FSMContext, is_admin:
     await message.answer(
         "Введите название нового продукта:",
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
     )
 
@@ -199,7 +199,7 @@ async def process_name(message: types.Message, state: FSMContext, session: Async
     """Обработка названия продукта"""
     if not message.text or not message.text.strip():
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             "🔴 Название не может быть пустым. Введите название продукта:", 
@@ -216,7 +216,7 @@ async def process_name(message: types.Message, state: FSMContext, session: Async
     
     if not categories:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             "🔴 В системе нет категорий. Сначала добавьте категории.", 
@@ -236,7 +236,7 @@ async def process_name(message: types.Message, state: FSMContext, session: Async
         )
     # Добавляем кнопку "Назад"
     builder.button(
-        text="⬅️ Назад в админ меню",
+        text="⬅️ Назад в админ-меню",
         callback_data="admin:menu"
     )
     builder.adjust(1)
@@ -266,7 +266,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext, ses
     
     if not category:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.edit_text("🔴 Категория не найдена", reply_markup=keyboard)
         await state.clear()
@@ -278,7 +278,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext, ses
     
     if not spheres:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.edit_text("🔴 В системе нет сфер применения.", reply_markup=keyboard)
         await state.clear()
@@ -295,7 +295,7 @@ async def process_category(callback: types.CallbackQuery, state: FSMContext, ses
         )
     # Добавляем кнопку "Назад"
     builder.button(
-        text="⬅️ Назад в админ меню",
+        text="⬅️ Назад в админ-меню",
         callback_data="admin:menu"
     )
     builder.adjust(1)
@@ -326,7 +326,7 @@ async def process_sphere(callback: types.CallbackQuery, state: FSMContext, sessi
     
     if not name or not category_id:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.edit_text("🔴 Ошибка: данные потеряны", reply_markup=keyboard)
         await state.clear()
@@ -338,7 +338,7 @@ async def process_sphere(callback: types.CallbackQuery, state: FSMContext, sessi
     
     if not sphere:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.edit_text("🔴 Сфера не найдена", reply_markup=keyboard)
         await state.clear()
@@ -350,7 +350,7 @@ async def process_sphere(callback: types.CallbackQuery, state: FSMContext, sessi
     
     # Создаем клавиатуру с кнопкой "Назад"
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     
     await message.edit_text(
@@ -370,7 +370,7 @@ async def process_description(message: types.Message, state: FSMContext):
     """Обработка подробного описания"""
     if not message.text:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer("Отправьте текст или '-' для пропуска:", reply_markup=keyboard)
         return
@@ -380,7 +380,7 @@ async def process_description(message: types.Message, state: FSMContext):
     await state.set_state(AddProd.waiting_advantages)
     
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     await message.answer(
         "Введите преимущества продукта:\n"
@@ -394,7 +394,7 @@ async def process_advantages(message: types.Message, state: FSMContext):
     """Обработка преимуществ"""
     if not message.text:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer("Отправьте текст или '-' для пропуска:", reply_markup=keyboard)
         return
@@ -404,7 +404,7 @@ async def process_advantages(message: types.Message, state: FSMContext):
     await state.set_state(AddProd.waiting_consumption)
     
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     await message.answer(
         "Введите информацию о расходе:\n"
@@ -418,7 +418,7 @@ async def process_consumption(message: types.Message, state: FSMContext):
     """Обработка расхода"""
     if not message.text:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer("Отправьте текст или '-' для пропуска:", reply_markup=keyboard)
         return
@@ -428,7 +428,7 @@ async def process_consumption(message: types.Message, state: FSMContext):
     await state.set_state(AddProd.waiting_package)
     
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     await message.answer(
         "Введите информацию об упаковке:\n"
@@ -442,7 +442,7 @@ async def process_package(message: types.Message, state: FSMContext, session: As
     """Обработка упаковки и создание продукта"""
     if not message.text:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer("Отправьте текст или '-' для пропуска:", reply_markup=keyboard)
         return
@@ -461,7 +461,7 @@ async def process_package(message: types.Message, state: FSMContext, session: As
     
     if not name or not category_id or not sphere_id:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer("🔴 Ошибка: основные данные потеряны", reply_markup=keyboard)
         await state.clear()
@@ -525,15 +525,15 @@ async def process_package(message: types.Message, state: FSMContext, session: As
         if package:
             product_info.append(f"Упаковка: {esc(package[:100])}{'...' if len(package) > 100 else ''}")
         
-        # Добавляем кнопку "Назад в админ меню" к сообщению об успехе
+        # Добавляем кнопку "Назад в админ-меню" к сообщению об успехе
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer("\n".join(product_info), parse_mode="HTML", reply_markup=keyboard)
         
     except Exception as e:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(f"Ошибка создания продукта: {str(e)[:100]}", reply_markup=keyboard)
         await session.rollback()
@@ -548,7 +548,7 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
         await message.answer(
             "🔴 У вас нет прав администратора",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -562,7 +562,7 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
             "ℹ️ ID продукта можно узнать в каталоге или поиске.",
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -582,7 +582,7 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
             await message.answer(
                 f"🔴 Продукт с ID {product_id} не найден или уже удален.",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             return
@@ -633,14 +633,14 @@ async def start_delete_product(message: types.Message, state: FSMContext, comman
             "Пример: <code>/delete_product 123</code>",
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
     except Exception as e:
         await message.answer(
             f"🔴 Ошибка при поиске продукта: {str(e)[:100]}",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
 
@@ -751,7 +751,7 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                     f"🟢 Продукт больше не отображается в каталоге.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
             except Exception:
@@ -769,7 +769,7 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                     f"Продукт больше не отображается в каталоге.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
                 return
@@ -782,7 +782,7 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                     f"🔴 Ошибка при удалении продукта: {str(e)[:100]}\n"
                     "Попробуйте еще раз.",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
             except Exception:
@@ -792,7 +792,7 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                     f"🔴 Ошибка при удалении продукта: {str(e)[:100]}\n"
                     "Попробуйте еще раз.",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
                 await session.rollback()
@@ -817,7 +817,7 @@ async def cancel_delete_product_callback(callback: types.CallbackQuery, state: F
                 f"Продукт с ID {product_id} остался без изменений.",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
         except Exception:
@@ -828,7 +828,7 @@ async def cancel_delete_product_callback(callback: types.CallbackQuery, state: F
                 f"Продукт с ID {product_id} остался без изменений.",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             return
@@ -840,7 +840,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
     """Обработка ID продукта для удаления через FSM (кнопка в админском меню)"""
     if not message.text:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             "Пожалуйста, отправьте текст с ID продукта.\n",
@@ -861,7 +861,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         
         if not product_data:
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             await message.answer(
                 f"🔴 Продукт с ID {product_id} не найден или уже удален.\n",
@@ -911,7 +911,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         
     except ValueError:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             "<b>Неверный формат ID</b>\n\n"
@@ -921,7 +921,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         )
     except Exception as e:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             f"🔴 Ошибка при поиске продукта: {str(e)[:100]}\n"
@@ -936,7 +936,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
     """Обработка ID продукта для редактирования"""
     if not message.text:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             "Пожалуйста, отправьте текст с ID продукта.\n",
@@ -954,7 +954,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         
         if not product_info:
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             await message.answer(
                 f"🔴 Продукт с ID {product_id} не найден или удален.\n",
@@ -979,7 +979,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         
     except ValueError:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             "🔴 Неверный формат ID. Введите число.\n",
@@ -987,7 +987,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         )
     except Exception as e:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
             f"🔴 Ошибка при поиске продукта: {str(e)[:100]}\n"
@@ -1003,7 +1003,7 @@ async def get_all_products(message: types.Message, session: AsyncSession, is_adm
         await message.answer(
             "🔴 У вас нет прав администратора",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -1015,7 +1015,7 @@ async def get_all_products(message: types.Message, session: AsyncSession, is_adm
         
         if not products:
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             await message.answer("📦 В базе данных нет продуктов", reply_markup=keyboard)
             return
@@ -1046,7 +1046,7 @@ async def get_all_products(message: types.Message, session: AsyncSession, is_adm
             
             # Отправляем все части
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             for i, msg_text in enumerate(messages):
                 if i == 0:
@@ -1057,13 +1057,13 @@ async def get_all_products(message: types.Message, session: AsyncSession, is_adm
                     await message.answer(f"<b>📋 Продолжение списка:</b>\n\n{msg_text}", parse_mode="HTML", reply_markup=keyboard)
         else:
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
             
     except Exception as e:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(f"🔴 Ошибка при получении списка продуктов: {str(e)}", reply_markup=keyboard)
 
@@ -1077,8 +1077,8 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
         return
     
     try:
-        # Получаем все продукты (включая удаленные для админа)
-        result = await session.execute(select(Product).order_by(Product.id))
+        # Получаем только неудаленные продукты
+        result = await session.execute(select(Product).where(Product.is_deleted == False).order_by(Product.id))
         products = result.scalars().all()
         
         if not products:
@@ -1087,7 +1087,7 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                     await callback.message.edit_text(
                         "📦 В базе данных нет продуктов",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                         ]])
                     )
                 except Exception:
@@ -1096,21 +1096,25 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                     await callback.message.answer(
                         "📦 В базе данных нет продуктов",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                            types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                         ]])
                     )
             await callback.answer()
             return
         
         # Формируем список продуктов
-        text = "<b>📋 Список всех продуктов:</b>\n\n"
+        text = "<b>📋 Список активных продуктов:</b>\n\n"
         
         for product in products:
             text += f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
         
+        # Статистика
+        text += f"\n<b>📊 Статистика:</b>\n"
+        text += f"Всего уникальных продуктов: {len(products)}"
+        
         # Создаем клавиатуру
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")]
+            [types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")]
         ])
         
         # Если сообщение слишком длинное, разбиваем на части
@@ -1119,7 +1123,7 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                 # Отправляем заголовок
                 try:
                     await callback.message.edit_text(
-                        "<b>📋 Список всех продуктов:</b>\n\n"
+                        "<b>📋 Список активных продуктов:</b>\n\n"
                         "Список большой, отправляю по частям...",
                         parse_mode="HTML"
                     )
@@ -1127,7 +1131,7 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                     await callback.answer()
                     await callback.message.delete()
                     await callback.message.answer(
-                        "<b>📋 Список всех продуктов:</b>\n\n"
+                        "<b>📋 Список активных продуктов:</b>\n\n"
                         "Список большой, отправляю по частям...",
                         parse_mode="HTML"
                     )
@@ -1171,7 +1175,7 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                 await callback.message.edit_text(
                     f"🔴 Ошибка при получении списка продуктов: {str(e)[:100]}",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
             except Exception:
@@ -1180,7 +1184,7 @@ async def admin_get_products_callback(callback: types.CallbackQuery, session: As
                 await callback.message.answer(
                     f"🔴 Ошибка при получении списка продуктов: {str(e)[:100]}",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
         else:
