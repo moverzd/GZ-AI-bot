@@ -16,7 +16,7 @@ def get_admin_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🔄🖼️ Изменить главное фото продукта", callback_data="admin:upload_main_image")
     builder.button(text="🗑️🖼️️ Удалить главное фото продукта", callback_data="admin:delete_main_image")
     builder.button(text="➕📎 Добавить файлы к продукту", callback_data="admin:add_files")
-    builder.button(text="🗑📎 Удалить файлы продукта", callback_data="admin:delete_files")
+    builder.button(text="🗑📎 Удалить файлы у продукта", callback_data="admin:delete_files")
     builder.button(text="🏠 Главное меню", callback_data="menu:main")
     builder.adjust(1)
     return builder.as_markup()

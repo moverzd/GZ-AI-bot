@@ -86,6 +86,21 @@ class ProductFileRepository:
                       local_path: Optional[str] = None, is_main_image: bool = False) -> ProductFile:
         """Добавление файла к продукту"""
         from datetime import datetime
+        from sqlalchemy import func
+        
+        # Если ordering не задан явно или равен 0, автоматически определяем следующий доступный номер
+        if ordering <= 0:
+            # Находим максимальный ordering для данного продукта и типа файла
+            result = await self.session.execute(
+                select(func.max(ProductFile.ordering))
+                .where(
+                    ProductFile.product_id == product_id,
+                    ProductFile.kind == kind,
+                    ProductFile.is_deleted == False
+                )
+            )
+            max_ordering = result.scalar()
+            ordering = (max_ordering + 1) if max_ordering is not None else 0
         
         product_file = ProductFile(
             product_id=product_id,

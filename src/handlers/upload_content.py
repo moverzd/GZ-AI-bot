@@ -255,9 +255,6 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
         # Получаем ID пользователя
         user_id = message.from_user.id if message.from_user else None
         
-        # Генерируем уникальный ordering на основе timestamp для избежания конфликтов
-        unique_ordering = int(datetime.now().timestamp())
-        
         # Используем сервис для загрузки файла
         from src.services.file_service import FileService
         file_service = FileService(session)

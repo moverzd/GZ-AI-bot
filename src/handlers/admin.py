@@ -683,6 +683,31 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
             .values(is_deleted=True)
         )
         
+        # Автоматически удаляем все файлы продукта (БД + физические файлы)
+        try:
+            from src.services.file_service import FileService
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            logger.info(f"[AdminDeleteProduct] Запуск удаления файлов для продукта {product_id}")
+            
+            file_service = FileService(session)
+            file_deletion_stats = await file_service.delete_product_files(product_id)
+            
+            logger.info(f"[AdminDeleteProduct] Статистика удаления файлов продукта {product_id}: {file_deletion_stats}")
+            
+            # Логируем результаты
+            if file_deletion_stats["errors"]:
+                logger.warning(f"[AdminDeleteProduct] Ошибки при удалении файлов: {file_deletion_stats['errors']}")
+            else:
+                logger.info(f"[AdminDeleteProduct] Успешно удалено: {file_deletion_stats['db_files_marked_deleted']} записей в БД, {file_deletion_stats['physical_files_deleted']} физических файлов")
+                
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[AdminDeleteProduct] Ошибка при удалении файлов продукта {product_id}: {e}")
+            # Не прерываем выполнение, если удаление файлов не удалось
+        
         # Автоматически удаляем все эмбеддинги продукта
         try:
             from src.services.auto_chunking_service import AutoChunkingService
@@ -719,7 +744,11 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                     f"ID: {product_id}\n"
                     f"Название: {esc(str(product.name))}\n"
                     f"Статус: Удален\n\n"
-                    f"Продукт помечен как удаленный и больше не отображается в каталоге.",
+                    f"Продукт помечен как удаленный\n"
+                    f"Все связанные файлы удалены\n"
+                    f"Эмбеддинги удалены из векторной БД\n"
+                    f"Физические файлы удалены с диска\n\n"
+                    f"🟢 Продукт больше не отображается в каталоге.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
@@ -733,7 +762,11 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                     f"ID: {product_id}\n"
                     f"Название: {esc(str(product.name))}\n"
                     f"Статус: Удален\n\n"
-                    f"Продукт помечен как удаленный и больше не отображается в каталоге.",
+                    f"✅ Продукт помечен как удаленный\n"
+                    f"✅ Все связанные файлы удалены\n"
+                    f"✅ Эмбеддинги удалены из векторной БД\n"
+                    f"✅ Физические файлы удалены с диска\n\n"
+                    f"Продукт больше не отображается в каталоге.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")

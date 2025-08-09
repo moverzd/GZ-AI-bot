@@ -472,6 +472,74 @@ class FileService:
         
         return stats
     
+    async def delete_product_files(self, product_id: int) -> dict:
+        """
+        Удаляет все файлы продукта: записи в БД + физические файлы на диске
+        """
+        import os
+        import shutil
+        from sqlalchemy import select, update
+        from src.config.settings import DOWNLOAD_FOLDER
+        
+        stats = {
+            "product_id": product_id,
+            "db_files_marked_deleted": 0,
+            "physical_files_deleted": 0,
+            "directories_removed": 0,
+            "errors": []
+        }
+        
+        try:
+            # 1. Помечаем все файлы продукта как удаленные в БД
+            result = await self.session.execute(
+                update(ProductFile)
+                .where(
+                    (ProductFile.product_id == product_id) &
+                    (ProductFile.is_deleted == False)
+                )
+                .values(is_deleted=True)
+            )
+            stats["db_files_marked_deleted"] = result.rowcount or 0
+            
+            # 2. Удаляем физические файлы
+            product_dir = os.path.join(DOWNLOAD_FOLDER, f"product_{product_id}")
+            
+            if os.path.exists(product_dir) and os.path.isdir(product_dir):
+                try:
+                    # Подсчитываем файлы перед удалением
+                    file_count = 0
+                    for root, dirs, files in os.walk(product_dir):
+                        file_count += len(files)
+                    
+                    # Удаляем всю директорию продукта
+                    shutil.rmtree(product_dir)
+                    stats["physical_files_deleted"] = file_count
+                    stats["directories_removed"] = 1
+                    
+                    logger.info(f"[FileService] Удалена директория продукта {product_id}: {product_dir}")
+                    
+                except Exception as e:
+                    error_msg = f"Ошибка при удалении директории {product_dir}: {str(e)}"
+                    stats["errors"].append(error_msg)
+                    logger.error(f"[FileService] {error_msg}")
+            else:
+                logger.info(f"[FileService] Директория продукта {product_id} не найдена: {product_dir}")
+            
+            # 3. Коммитим изменения в БД
+            await self.session.commit()
+            
+            logger.info(f"[FileService] Удаление файлов продукта {product_id} завершено: {stats}")
+            
+        except Exception as e:
+            error_msg = f"Критическая ошибка при удалении файлов продукта {product_id}: {str(e)}"
+            stats["errors"].append(error_msg)
+            logger.error(f"[FileService] {error_msg}")
+            
+            # Откатываем транзакцию при ошибке
+            await self.session.rollback()
+        
+        return stats
+    
     async def is_file_downloaded(self, file_id: int) -> bool:
         """
         Проверяет, скачан ли файл локально
