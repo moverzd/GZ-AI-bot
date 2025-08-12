@@ -19,6 +19,7 @@ from src.handlers.upload_content import router as upload_content_router
 from src.handlers.upload_main_image import router as upload_main_image_router
 from src.handlers.delete_files import router as delete_files_router
 from src.handlers.rag import router as rag_router
+from src.handlers.feedback import router as feedback_router
 from src.keyboards.user import get_main_menu_keyboard
 from aiogram import Bot, Dispatcher
 
@@ -266,6 +267,7 @@ async def main():
     dp.include_router(upload_main_image_router) # загрузка главных изображений
     dp.include_router(delete_files_router) # удаление файлов
     dp.include_router(rag_router) # обработчики для RAG
+    dp.include_router(feedback_router) # обработчики обратной связи
     dp.include_router(common_router) # NOTE: ВСЕГДА В КОНЦЕ
         
     @dp.message(Command('admin'))

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, Enum, Boolean, event, DECIMAL
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, Enum, Boolean, event, DECIMAL, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from src.database.connection import Base
 
 """
@@ -134,6 +135,77 @@ class ProductPackage(Base):
     
     # Отношения
     product = relationship("Product", back_populates="packages")
+
+
+class UserQuery(Base):
+    """Пользовательские запросы к боту."""
+    
+    __tablename__ = 'user_queries'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False, index=True)  # Telegram user ID
+    username = Column(String(255))  # Telegram username
+    query_text = Column(Text, nullable=False)  # Текст запроса пользователя
+    query_type = Column(
+        Enum('search', 'ai_question', 'product_view', name='query_type'),
+        nullable=False,
+        default='ai_question'
+    )  # Тип запроса
+    created_at = Column(DateTime, nullable=False, default=func.now())
+    
+    # Отношения
+    responses = relationship(
+        'BotResponse', 
+        back_populates='query', 
+        cascade='all, delete-orphan'
+    )
+
+
+class BotResponse(Base):
+    """Ответы бота на запросы пользователей."""
+    
+    __tablename__ = 'bot_responses'
+    
+    id = Column(Integer, primary_key=True)
+    query_id = Column(Integer, ForeignKey('user_queries.id', ondelete="CASCADE"), nullable=False)
+    response_text = Column(Text, nullable=False)  # Текст ответа бота
+    response_type = Column(
+        Enum('ai_generated', 'search_results', 'product_info', 'error', name='response_type'),
+        nullable=False,
+        default='ai_generated'
+    )  # Тип ответа
+    execution_time = Column(DECIMAL(8, 2))  # Время выполнения запроса в секундах
+    sources_count = Column(Integer, default=0)  # Количество источников, использованных для ответа
+    message_id = Column(Integer)  # ID сообщения в Telegram для связи с feedback
+    created_at = Column(DateTime, nullable=False, default=func.now())
+    
+    # Отношения
+    query = relationship('UserQuery', back_populates='responses')
+    feedbacks = relationship(
+        'UserFeedback', 
+        back_populates='response', 
+        cascade='all, delete-orphan'
+    )
+
+
+class UserFeedback(Base):
+    """Обратная связь пользователей по ответам бота."""
+    
+    __tablename__ = 'user_feedback'
+    
+    id = Column(Integer, primary_key=True)
+    response_id = Column(Integer, ForeignKey('bot_responses.id', ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, nullable=False, index=True)  # Telegram user ID
+    feedback_type = Column(
+        Enum('like', 'dislike', name='feedback_type'),
+        nullable=False
+    )  # Тип реакции
+    comment = Column(Text)  # Комментарий пользователя (необязательный)
+    created_at = Column(DateTime, nullable=False, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Отношения
+    response = relationship('BotResponse', back_populates='feedbacks')
 
 
 # Регистрация обработчиков событий SQLAlchemy

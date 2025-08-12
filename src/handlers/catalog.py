@@ -76,18 +76,13 @@ async def show_categories(callback: types.CallbackQuery, session: AsyncSession):
         try:
             # Проверяем, есть ли медиа в сообщении
             if callback.message.photo or callback.message.document or callback.message.video:
-                # Для сообщений с медиа отправляем новое сообщение
+                # Для сообщений с медиа отправляем новое текстовое сообщение
                 await callback.message.answer(
                     "<b>📂 Категории продукции:</b>\n\n"
                     "Выберите категорию:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
                 )
-                # По возможности удаляем предыдущее сообщение
-                try:
-                    await callback.message.delete()
-                except Exception:
-                    pass  # Игнорируем ошибку, если не удалось удалить сообщение
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
@@ -135,18 +130,13 @@ async def show_spheres(callback: types.CallbackQuery, session: AsyncSession):
         try:
             # Проверяем, есть ли медиа в сообщении
             if callback.message.photo or callback.message.document or callback.message.video:
-                # Для сообщений с медиа отправляем новое сообщение
+                # Для сообщений с медиа отправляем новое текстовое сообщение
                 await callback.message.answer(
                     "<b>📂 Сферы применения:</b>\n\n"
                     "Выберите сферу применения:",
                     reply_markup=keyboard,
                     parse_mode='HTML'
                 )
-                # По возможности удаляем предыдущее сообщение
-                try:
-                    await callback.message.delete()
-                except Exception:
-                    pass  # Игнорируем ошибку, если не удалось удалить сообщение
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
@@ -183,7 +173,7 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
             try:
                 # Проверяем, есть ли медиа в сообщении
                 if callback.message.photo or callback.message.document or callback.message.video:
-                    # Для сообщений с медиа отправляем новое сообщение
+                    # Для сообщений с медиа отправляем новое текстовое сообщение
                     await callback.message.answer(
                         "В этой категории пока нет продуктов.",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -193,11 +183,6 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
                             )
                         ]])
                     )
-                    # По возможности удаляем предыдущее сообщение
-                    try:
-                        await callback.message.delete()
-                    except Exception:
-                        pass  # Игнорируем ошибку, если не удалось удалить сообщение
                 else:
                     # Для текстовых сообщений используем edit_text
                     await callback.message.edit_text(
@@ -449,70 +434,141 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     # Проверяем и исправляем HTML теги перед отправкой
     text = fix_html_tags(text)
 
-    if product_info.get("main_image"):
-        # Для продуктов с картинкой проверяем длину текста
-        # Если текст больше 1024 символов - отправляем два сообщения
-        # Иначе - одно сообщение с полной информацией
-        
-        if len(text) > 1024:
-            # Создаем краткое описание для caption (только основная информация)
-            short_caption = f"<b>{esc(product_info['name'])}</b>\n"
-            short_caption += f"<b>ID:</b> {product_info['id']}\n\n"
-            
-            # Категория
-            category_name = "Не указана"
-            if product_info.get('category'):
-                category_name = str(product_info['category'].name)
-            short_caption += f"<b>Категория:</b> {esc(category_name)}\n"
-            
-            # Сфера применения
-            spheres_text = "Не указана"
-            if product_info.get("spheres"):
-                spheres_names = []
-                for sphere in product_info["spheres"]:
-                    if sphere.get('name'):
-                        spheres_names.append(sphere['name'])
-                if spheres_names:
-                    spheres_text = ', '.join(spheres_names)
-            short_caption += f"<b>Сфера применения:</b> {esc(spheres_text)}"
-            
-            short_caption = fix_html_tags(short_caption)
-            
-            if callback.message and isinstance(callback.message, Message):
-                # Отправляем картинку с кратким описанием
-                await callback.message.edit_media(
-                    types.InputMediaPhoto(
-                        media=product_info["main_image"],
-                        caption=short_caption,
+    if callback.message and isinstance(callback.message, Message):
+        try:
+            # Проверяем, есть ли медиа в текущем сообщении
+            if callback.message.photo or callback.message.document or callback.message.video:
+                # Если есть медиа и у продукта есть главное изображение - редактируем медиа
+                if product_info.get("main_image"):
+                    if len(text) > 1024:
+                        # Создаем краткое описание для caption (только основная информация)
+                        short_caption = f"<b>{esc(product_info['name'])}</b>\n"
+                        short_caption += f"<b>ID:</b> {product_info['id']}\n\n"
+                        
+                        # Категория
+                        category_name = "Не указана"
+                        if product_info.get('category'):
+                            category_name = str(product_info['category'].name)
+                        short_caption += f"<b>Категория:</b> {esc(category_name)}\n"
+                        
+                        # Сфера применения
+                        spheres_text = "Не указана"
+                        if product_info.get("spheres"):
+                            spheres_names = []
+                            for sphere in product_info["spheres"]:
+                                if sphere.get('name'):
+                                    spheres_names.append(sphere['name'])
+                            if spheres_names:
+                                spheres_text = ', '.join(spheres_names)
+                        short_caption += f"<b>Сфера применения:</b> {esc(spheres_text)}"
+                        
+                        short_caption = fix_html_tags(short_caption)
+                        
+                        # Редактируем медиа с кратким описанием
+                        await callback.message.edit_media(
+                            types.InputMediaPhoto(
+                                media=product_info["main_image"],
+                                caption=short_caption,
+                                parse_mode="HTML"
+                            ),
+                            reply_markup=keyboard
+                        )
+                        
+                        # Отправляем полную информацию отдельным сообщением
+                        await callback.message.answer(
+                            text,
+                            parse_mode="HTML"
+                        )
+                    else:
+                        # Для коротких текстов редактируем медиа с полной информацией
+                        await callback.message.edit_media(
+                            types.InputMediaPhoto(
+                                media=product_info["main_image"],
+                                caption=text,
+                                parse_mode="HTML"
+                            ),
+                            reply_markup=keyboard
+                        )
+                else:
+                    # Если у продукта нет изображения, но в сообщении есть медиа - отправляем новое текстовое сообщение
+                    await callback.message.answer(
+                        text,
+                        reply_markup=keyboard,
                         parse_mode="HTML"
-                    ),
-                    reply_markup=keyboard
-                )
-                
-                # Отправляем полную информацию отдельным сообщением
-                await callback.message.answer(
-                    text,
+                    )
+            else:
+                # Если в сообщении нет медиа
+                if product_info.get("main_image"):
+                    # Если у продукта есть изображение - отправляем новое сообщение с медиа
+                    if len(text) > 1024:
+                        # Создаем краткое описание для caption
+                        short_caption = f"<b>{esc(product_info['name'])}</b>\n"
+                        short_caption += f"<b>ID:</b> {product_info['id']}\n\n"
+                        
+                        # Категория
+                        category_name = "Не указана"
+                        if product_info.get('category'):
+                            category_name = str(product_info['category'].name)
+                        short_caption += f"<b>Категория:</b> {esc(category_name)}\n"
+                        
+                        # Сфера применения
+                        spheres_text = "Не указана"
+                        if product_info.get("spheres"):
+                            spheres_names = []
+                            for sphere in product_info["spheres"]:
+                                if sphere.get('name'):
+                                    spheres_names.append(sphere['name'])
+                            if spheres_names:
+                                spheres_text = ', '.join(spheres_names)
+                        short_caption += f"<b>Сфера применения:</b> {esc(spheres_text)}"
+                        
+                        short_caption = fix_html_tags(short_caption)
+                        
+                        # Отправляем картинку с кратким описанием
+                        await callback.message.answer_photo(
+                            photo=product_info["main_image"],
+                            caption=short_caption,
+                            reply_markup=keyboard,
+                            parse_mode="HTML"
+                        )
+                        
+                        # Отправляем полную информацию отдельным сообщением
+                        await callback.message.answer(
+                            text,
+                            parse_mode="HTML"
+                        )
+                    else:
+                        # Для коротких текстов отправляем одно сообщение с полной информацией
+                        await callback.message.answer_photo(
+                            photo=product_info["main_image"],
+                            caption=text,
+                            reply_markup=keyboard,
+                            parse_mode="HTML"
+                        )
+                else:
+                    # Если у продукта нет изображения - редактируем текстовое сообщение
+                    await callback.message.edit_text(
+                        text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+        except Exception as e:
+            # В случае ошибки отправляем новое сообщение
+            if product_info.get("main_image"):
+                await callback.message.answer_photo(
+                    photo=product_info["main_image"],
+                    caption=text if len(text) <= 1024 else f"<b>{esc(product_info['name'])}</b>\n<b>ID:</b> {product_info['id']}",
+                    reply_markup=keyboard,
                     parse_mode="HTML"
                 )
-        else:
-            # Для коротких текстов отправляем одно сообщение с полной информацией
-            if callback.message and isinstance(callback.message, Message):
-                await callback.message.edit_media(
-                    types.InputMediaPhoto(
-                        media=product_info["main_image"],
-                        caption=text,
-                        parse_mode="HTML"
-                    ),
-                    reply_markup=keyboard
+                if len(text) > 1024:
+                    await callback.message.answer(text, parse_mode="HTML")
+            else:
+                await callback.message.answer(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
                 )
-    else:
-        # Для продуктов без картинки отправляем обычное текстовое сообщение
-        if callback.message and isinstance(callback.message, Message):
-            await callback.message.edit_text(
-                text,
-                reply_markup=keyboard,
-                parse_mode="HTML"
-            )
     
     await callback.answer()
 
@@ -534,7 +590,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
             try:
                 # Проверяем, есть ли медиа в сообщении
                 if callback.message.photo or callback.message.document or callback.message.video:
-                    # Для сообщений с медиа отправляем новое сообщение
+                    # Для сообщений с медиа отправляем новое текстовое сообщение
                     await callback.message.answer(
                         "В этой сфере применения пока нет продуктов.",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -544,11 +600,6 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
                             )
                         ]])
                     )
-                    # По возможности удаляем предыдущее сообщение
-                    try:
-                        await callback.message.delete()
-                    except Exception:
-                        pass  # Игнорируем ошибку, если не удалось удалить сообщение
                 else:
                     # Для текстовых сообщений используем edit_text
                     await callback.message.edit_text(
@@ -594,16 +645,11 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
         try:
             # Проверяем, есть ли медиа в сообщении
             if callback.message.photo or callback.message.document or callback.message.video:
-                # Для сообщений с медиа отправляем новое сообщение
+                # Для сообщений с медиа отправляем новое текстовое сообщение
                 await callback.message.answer(
                     "Выберите продукт:",
                     reply_markup=keyboard
                 )
-                # По возможности удаляем предыдущее сообщение
-                try:
-                    await callback.message.delete()
-                except Exception:
-                    pass  # Игнорируем ошибку, если не удалось удалить сообщение
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(

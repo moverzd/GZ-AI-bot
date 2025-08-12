@@ -94,4 +94,11 @@ class ChunkingManagement(StatesGroup):
     waiting_product_id = State()
 
 
+class FeedbackState(StatesGroup):
+    """
+    Состояния для сбора обратной связи
+    """
+    waiting_comment = State()  # Ожидание комментария к отрицательной оценке
+
+
 

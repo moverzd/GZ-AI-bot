@@ -72,7 +72,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
             "Попробуйте другой запрос или воспользуйтесь меню каталога.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(
-                    text="🔍 Новый поиск", 
+                    text="🔍 Каталог продукции", 
                     callback_data="search:new"
                 ),
                 types.InlineKeyboardButton(
@@ -105,7 +105,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     # Добавляем кнопки навигации
     buttons.append([
         types.InlineKeyboardButton(
-            text="🔍 Новый поиск", 
+            text="🔍 Каталог продукции", 
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
@@ -164,7 +164,6 @@ async def new_search(callback: types.CallbackQuery, state: FSMContext):
             )
         except Exception:
             await callback.answer()
-            await callback.message.delete()
             await callback.message.answer(
                 "<b>🔍 Поиск продуктов</b>\n\n"
                 "Введите название продукта или его часть для поиска:",
@@ -207,10 +206,10 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     
     if not search_results:
         no_results_text = f"По запросу '{esc(query)}' больше нет результатов.\n" \
-                        "Попробуйте новый поиск или воспользуйтесь каталогом."
+                        "Попробуйте Каталог продукции или воспользуйтесь каталогом."
         no_results_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
             types.InlineKeyboardButton(
-                text="🔍 Новый поиск", 
+                text="🔍 Каталог продукции", 
                 callback_data="search:new"
             ),
             types.InlineKeyboardButton(
@@ -228,17 +227,12 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
             try:
                 # Проверяем, есть ли медиа в сообщении
                 if callback.message.photo or callback.message.document or callback.message.video:
-                    # Для сообщений с медиа отправляем новое сообщение
+                    # Для сообщений с медиа отправляем новое текстовое сообщение
                     await callback.message.answer(
                         no_results_text,
                         reply_markup=no_results_keyboard,
                         parse_mode="HTML"
                     )
-                    # По возможности удаляем предыдущее сообщение
-                    try:
-                        await callback.message.delete()
-                    except Exception:
-                        pass  # Игнорируем ошибку, если не удалось удалить сообщение
                 else:
                     # Для текстовых сообщений используем edit_text
                     await callback.message.edit_text(
@@ -273,7 +267,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
     # Добавляем кнопки навигации
     buttons.append([
         types.InlineKeyboardButton(
-            text="🔍 Новый поиск", 
+            text="🔍 Каталог продукции", 
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
@@ -303,17 +297,12 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
         try:
             # Проверяем, есть ли медиа в сообщении
             if callback.message.photo or callback.message.document or callback.message.video:
-                # Для сообщений с медиа отправляем новое сообщение
+                # Для сообщений с медиа отправляем новое текстовое сообщение
                 await callback.message.answer(
                     result_text,
                     reply_markup=keyboard,
                     parse_mode="HTML"
                 )
-                # По возможности удаляем предыдущее сообщение
-                try:
-                    await callback.message.delete()
-                except Exception:
-                    pass  # Игнорируем ошибку, если не удалось удалить сообщение
             else:
                 # Для текстовых сообщений используем edit_text
                 await callback.message.edit_text(
