@@ -9,6 +9,9 @@ __pycache__/
 *.sql
 *.txt
 
+#Exception : sql setup file
+!database_setup.sql
+
 # Just fooling around 
 /experimental/
 
