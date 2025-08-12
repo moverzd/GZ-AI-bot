@@ -5,13 +5,12 @@ venv/
 docs/
 __pycache__/
 
+# Exception: keep sql setup file
+!sql_db/database_setup.sql
+
 # Database backups
 *.sql
 *.txt
-
-#Exception : sql setup file
-!database_setup.sql
-
 # Just fooling around 
 /experimental/
 
