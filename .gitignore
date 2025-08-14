@@ -1,9 +1,13 @@
 .env
 venv/
 .DS_Store
+*.DS_Store
 .env.example
 docs/
 __pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
 
 # Exception: keep sql setup file
 !sql_db/database_setup.sql

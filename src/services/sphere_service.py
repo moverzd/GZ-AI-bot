@@ -14,7 +14,17 @@ class SphereService:
         self.file_repo = ProductFileRepository(session)
 
     async def get_all_spheres(self) -> List[Sphere]:
-        result = await self.session.execute(select(Sphere))
+        """
+        Получить все сферы, исключая скрытые для пользователей
+        """
+        # Список названий сфер, которые нужно скрыть от пользователей
+        hidden_spheres = ["ПГС (В процессе редактирования)"]
+        
+        result = await self.session.execute(
+            select(Sphere).where(
+                ~Sphere.name.in_(hidden_spheres)
+            )
+        )
         return list(result.scalars().all())
 
     async def get_products_by_sphere(self, sphere_id: int) -> List[Tuple[Product, Optional[str]]]:

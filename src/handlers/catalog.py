@@ -3,7 +3,7 @@ from aiogram.filters import StateFilter
 from aiogram import F
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.services.product_service import ProductService, format_package_info
+from src.services.product_service import ProductService
 from src.services.category_service import CategoryService
 from src.services.sphere_service import SphereService
 from src.keyboards.user import get_main_menu_keyboard
@@ -37,13 +37,32 @@ async def catalog_menu(callback: types.CallbackQuery):
     ])
 
     if callback.message and isinstance(callback.message, Message):
-        # Всегда отправляем новое сообщение вместо редактирования
-        await callback.message.answer(
-            "<b>📂 Каталог продукции</b>\n\n"
-            "Выберите способ просмотра каталога:",
-            reply_markup=keyboard,
-            parse_mode='HTML'
-        )
+        try:
+            # Проверяем, есть ли медиа в сообщении
+            if callback.message.photo or callback.message.document or callback.message.video:
+                # Для сообщений с медиа отправляем новое текстовое сообщение
+                await callback.message.answer(
+                    "<b>📂 Каталог продукции</b>\n\n"
+                    "Выберите способ просмотра каталога:",
+                    reply_markup=keyboard,
+                    parse_mode='HTML'
+                )
+            else:
+                # Для текстовых сообщений используем edit_text
+                await callback.message.edit_text(
+                    "<b>📂 Каталог продукции</b>\n\n"
+                    "Выберите способ просмотра каталога:",
+                    reply_markup=keyboard,
+                    parse_mode='HTML'
+                )
+        except Exception as e:
+            # В случае ошибки отправляем новое сообщение
+            await callback.message.answer(
+                "<b>📂 Каталог продукции</b>\n\n"
+                "Выберите способ просмотра каталога:",
+                reply_markup=keyboard,
+                parse_mode='HTML'
+            )
     await callback.answer()
 
 
@@ -210,10 +229,11 @@ async def show_category_products(callback: types.CallbackQuery, session: AsyncSe
     
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
 
-    for product, _ in products:
+    for product in products:
+        # product теперь это словарь, а не кортеж
         button = types.InlineKeyboardButton(
-            text=f"{str(product.name)}",  # Не добавлем ID к названию
-            callback_data=f"product:{product.id}:category:{category_id}"
+            text=f"{str(product['name'])}",  
+            callback_data=f"product:{product['id']}:category:{category_id}"
         )
         keyboard.inline_keyboard.append([button])
     
@@ -297,7 +317,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
             elif from_category and category_id is not None:
                 back_button = types.InlineKeyboardButton(
                     text="⬅️ Назад",
-                    callback_data=f"category:{category_id}"
+                    callback_data=f"back_to_catalog:category:{category_id}"
                 )
             elif from_sphere and sphere_id is not None:
                 back_button = types.InlineKeyboardButton(
@@ -332,7 +352,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     # Категория (обязательное поле)
     category_name = "Не указана"
     if product_info.get('category'):
-        category_name = str(product_info['category'].name)
+        category_name = str(product_info['category'])
     text += f"<b>Категория:</b> {esc(category_name)}\n\n"
     
     # Сфера применения (обязательное поле)
@@ -346,36 +366,32 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
             spheres_text = ', '.join(spheres_names)
     text += f"<b>Сфера применения:</b> {esc(spheres_text)}\n\n"
     
-    # Описание
-    description = product_info.get('description')
-    if description and description.strip() and description.lower() not in ['-', 'null']:
-        text += f"<b>Описание:</b>\n{esc(description)}\n\n"
-
-    # Информация об упаковке из новой таблицы product_package
-    package_info_text = format_package_info(product_info.get("packages", []))
-    has_new_package_info = bool(package_info_text)
+    # Описание и преимущества из сфер применения
+    if product_info.get("spheres_info"):
+        for sphere in product_info["spheres_info"]:
+            # Описание
+            description = sphere.get("description")
+            if description and description.strip() and description.lower() not in ['-', 'null']:
+                text += f"<b>Описание:</b>\n{esc(description)}\n\n"
+                break  # Берем описание только из первой сферы
     
-    # Преимущества, расход и упаковка из сфер применения
-    if product_info.get("spheres"):
-        for sphere in product_info["spheres"]:
+    if product_info.get("spheres_info"):
+        for sphere in product_info["spheres_info"]:
             # Преимущества
-            if sphere.get("advantages"):
+            advantages = sphere.get("advantages")
+            if advantages and advantages.strip() and advantages.lower() not in ['-', 'null']:
                 if "<b>Преимущества:</b>" not in text:  # Добавляем проверку, чтобы не добавлять повторно
-                    text += "<b>Преимущества:</b>\n"
-                    for adv in sphere["advantages"]:
-                        clean_adv = str(adv).strip().lstrip('•-–— ').strip()
-                        if clean_adv:
-                            text += f"• {esc(clean_adv)}\n"
-                    text += "\n"
+                    from src.core.utils import format_advantages_for_telegram
+                    formatted_advantages = format_advantages_for_telegram(advantages)
+                    if formatted_advantages:
+                        text += f"<b>Преимущества:</b>\n{esc(formatted_advantages)}\n\n"
+                    break  # Берем преимущества только из первой сферы
             
             # Расход = примечания
             notes = sphere.get("notes")
             if notes and str(notes).strip() and str(notes).strip() not in ['-','нет', 'null']:
                 text += f"<b>Расход:</b>\n{esc(str(notes))}\n\n"
-    
-    # Добавляем новую информацию об упаковке если она есть
-    if has_new_package_info:
-        text += f"{package_info_text}\n"
+                break  # Берем расход только из первой сферы
     
     # Проверяем и исправляем HTML теги перед отправкой
     text = fix_html_tags(text)
@@ -407,7 +423,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     elif from_category and category_id is not None:
         back_button = types.InlineKeyboardButton(
             text="⬅️ Назад",
-            callback_data=f"category:{category_id}"
+            callback_data=f"back_to_catalog:category:{category_id}"
         )
     elif from_sphere and sphere_id is not None:
         back_button = types.InlineKeyboardButton(
@@ -448,7 +464,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
                         # Категория
                         category_name = "Не указана"
                         if product_info.get('category'):
-                            category_name = str(product_info['category'].name)
+                            category_name = str(product_info['category'])
                         short_caption += f"<b>Категория:</b> {esc(category_name)}\n"
                         
                         # Сфера применения
@@ -508,7 +524,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
                         # Категория
                         category_name = "Не указана"
                         if product_info.get('category'):
-                            category_name = str(product_info['category'].name)
+                            category_name = str(product_info['category'])
                         short_caption += f"<b>Категория:</b> {esc(category_name)}\n"
                         
                         # Сфера применения
@@ -572,6 +588,59 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
     
     await callback.answer()
 
+@router.callback_query(lambda c: c.data and c.data.startswith('back_to_catalog:category:'))
+async def back_to_category_catalog(callback: types.CallbackQuery, session: AsyncSession):
+    """
+    Возврат к каталогу категории с отправкой нового сообщения (как в сферах)
+    """
+    if not callback.data:
+        return
+        
+    category_id = int(callback.data.split(':')[2])
+
+    product_service = ProductService(session)
+    products = await product_service.get_products_by_category(category_id)
+
+    if not products:
+        if callback.message:
+            await callback.message.answer(
+                "В этой категории пока нет продуктов.",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(
+                        text="⬅️ Назад",
+                        callback_data="catalog:categories"
+                    )
+                ]])
+            )
+        await callback.answer()
+        return
+    
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+
+    for product in products:
+        # product теперь это словарь, а не кортеж
+        button = types.InlineKeyboardButton(
+            text=f"{str(product['name'])}",
+            callback_data=f"product:{product['id']}:category:{category_id}"
+        )
+        keyboard.inline_keyboard.append([button])
+    
+    keyboard.inline_keyboard.append([
+        types.InlineKeyboardButton(
+            text="⬅️ Назад",
+            callback_data="catalog:categories"
+        )
+    ])
+
+    # Всегда отправляем новое сообщение (как в сферах)
+    if callback.message:
+        await callback.message.answer(
+            "Выберите продукт:",
+            reply_markup=keyboard
+        )
+    await callback.answer()
+
+
 @router.callback_query(lambda c: c.data and c.data.startswith('sphere:'))
 async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSession):
     """
@@ -629,7 +698,7 @@ async def show_sphere_products(callback: types.CallbackQuery, session: AsyncSess
 
     for product, _ in products:
         button = types.InlineKeyboardButton(
-        text=f"{str(product.name)}",  # Добавляем ID к названию
+            text=f"{str(product.name)}",  
             callback_data=f"product:{product.id}:sphere:{sphere_id}"
         )
         keyboard.inline_keyboard.append([button])

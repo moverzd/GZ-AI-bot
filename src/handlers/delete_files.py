@@ -43,11 +43,10 @@ async def admin_delete_files_callback(callback: types.CallbackQuery, state: FSMC
             await callback.message.edit_text(
                 "<b>🗑📎 Удаление файлов продукта</b>\n\n"
                 "Введите ID продукта, файлы которого хотите удалить:\n"
-                "ℹ️ ID продукта можно найти в карточке продукта.\n"
-                "ℹ️ Для выхода в панель администратора введите /admin",
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
         except Exception:
@@ -55,12 +54,10 @@ async def admin_delete_files_callback(callback: types.CallbackQuery, state: FSMC
             await callback.message.delete()
             await callback.message.answer(
                 "<b>🗑📎 Удаление файлов продукта</b>\n\n"
-                "Введите ID продукта, файлы которого хотите удалить:\n"
-                "ℹ️ ID продукта можно найти в карточке продукта.\n"
-                "ℹ️ Для выхода в панель администратора введите /admin",
+                "Введите , файлы которого хотите удалить:\n",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             return
@@ -71,9 +68,9 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
     """Обработка ввода ID продукта для удаления файлов"""
     if not message.text:
         await message.answer(
-            "🔴 Сообщение не содержит текста. Попробуйте ещё раз.",
+            "❌ Сообщение не содержит текста. Попробуйте ещё раз.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -86,7 +83,7 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
         
         if not product:
             await message.answer(
-                "🔴 Продукт с таким ID не найден.\n\n"
+                "❌ Продукт с таким ID не найден.\n\n"
                 "Попробуйте ещё раз или введите /admin для возврата в меню."
             )
             return
@@ -102,10 +99,10 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
         if not files:
             await message.answer(
                 f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
-                "🔴 У этого продукта нет файлов для удаления.",
+                "❌ У этого продукта нет файлов для удаления.",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
             )
             await state.clear()
@@ -117,7 +114,7 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
         
     except ValueError:
         await message.answer(
-            "🔴 Неверный формат ID продукта. Введите числовое значение.\n\n"
+            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
             "Или введите /admin для возврата в меню."
         )
 
@@ -149,7 +146,7 @@ async def show_files_list(message_or_callback, session: AsyncSession, product_id
     
     keyboard.inline_keyboard.append([
         types.InlineKeyboardButton(
-            text="⬅️ Вернуться в админ меню",
+            text="⬅️ Вернуться в админ-меню",
             callback_data="admin:menu"
         )
     ])
@@ -239,11 +236,11 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
         [
             types.InlineKeyboardButton(
-                text="🟢 Да, удалить",
+                text="� Да, удалить",
                 callback_data=f"confirm_delete_file:{file_id}"
             ),
             types.InlineKeyboardButton(
-                text="🔴 Отмена",
+                text="� Отмена",
                 callback_data=f"cancel_delete_file:{file_record.product_id}"
             )
         ]
@@ -338,7 +335,7 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
         product = await product_service.get_product_by_id(product_id)
         
         success_text = (
-            f"🟢 <b>Файл успешно удален!</b>\n\n"
+            f"✅ <b>Файл успешно удален!</b>\n\n"
             f"📦 <b>Продукт:</b> {esc(product['name'] if product else 'Неизвестен')}\n"
             f"📄 <b>Удаленный файл:</b> {esc(str(file_title))}\n\n"
             f"Выберите дальнейшее действие:"
@@ -353,7 +350,7 @@ async def delete_file_confirmed(callback: types.CallbackQuery, session: AsyncSes
             ],
             [
                 types.InlineKeyboardButton(
-                    text="🏠 Вернуться в админ меню",
+                    text="🏠 Вернуться в админ-меню",
                     callback_data="admin:menu"
                 )
             ]
@@ -408,10 +405,10 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
             try:
                 await callback.message.edit_text(
                     f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
-                    "🔴 У этого продукта нет файлов для удаления.",
+                    "❌ У этого продукта нет файлов для удаления.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
             except Exception:
@@ -419,10 +416,10 @@ async def cancel_file_deletion(callback: types.CallbackQuery, session: AsyncSess
                 await callback.message.delete()
                 await callback.message.answer(
                     f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
-                    "🔴 У этого продукта нет файлов для удаления.",
+                    "❌ У этого продукта нет файлов для удаления.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
                 return
@@ -459,11 +456,11 @@ async def delete_more_files_same_product(callback: types.CallbackQuery, session:
                 try:
                     await callback.message.edit_text(
                         f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
-                        "🔴 У этого продукта больше нет файлов для удаления.",
+                        "❌ У этого продукта больше нет файлов для удаления.",
                         parse_mode="HTML",
                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                             types.InlineKeyboardButton(
-                                text="🏠 Вернуться в админ меню",
+                                text="🏠 Вернуться в админ-меню",
                                 callback_data="admin:menu"
                             )
                         ]])
@@ -473,11 +470,11 @@ async def delete_more_files_same_product(callback: types.CallbackQuery, session:
                     await callback.message.delete()
                     await callback.message.answer(
                      f"📂 <b>Продукт:</b> {esc(product['name'])}\n\n"
-                    "🔴 У этого продукта больше нет файлов для удаления.",
+                    "❌ У этого продукта больше нет файлов для удаления.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(
-                            text="🏠 Вернуться в админ меню",
+                            text="🏠 Вернуться в админ-меню",
                             callback_data="admin:menu"
                         )
                     ]])

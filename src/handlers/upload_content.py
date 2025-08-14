@@ -4,12 +4,15 @@ from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+import logging
 
 from src.handlers.states import AddFiles
 from src.database.models import Product, ProductFile
 from src.services.product_service import ProductService
 from src.keyboards.admin import get_admin_main_menu_keyboard
 from src.core.utils import esc
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -61,25 +64,22 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
             await callback.message.edit_text(
                 "<b>➕📎 Добавление файлов к продукту</b>\n\n"
                 "Введите ID продукта, к которому хотите добавить файлы:\n"
-                "️️ℹ️ ID продукта можно найти в карточке продукта.\n"
-                "ℹ️ Для выхода в панель администратора введите /admin",
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
         except Exception:
             # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
             await callback.answer()
-            await callback.message.delete()
             await callback.message.answer(
                 "<b>➕📎 Добавление файлов к продукту</b>\n\n"
                 "Введите ID продукта, к которому хотите добавить файлы:\n"
-                "️️ℹ️ ID продукта можно найти в карточке продукта.\n"
-                "ℹ️ Для выхода в панель администратора введите /admin",
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             return
@@ -90,9 +90,9 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
     """Обработка ввода ID продукта для добавления файлов"""
     if not message.text:
         await message.answer(
-            "🔴 Сообщение не содержит текста. Попробуйте ещё раз.",
+            "❌ Сообщение не содержит текста. Попробуйте ещё раз.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -106,7 +106,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         
         if not product:
             await message.answer(
-                "🔴 Продукт с таким ID не найден.\n\n"
+                "❌ Продукт с таким ID не найден.\n\n"
                 "Попробуйте ещё раз или введите /admin для возврата в меню."
             )
             return
@@ -127,7 +127,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         
     except ValueError:
         await message.answer(
-            "🔴 Неверный формат ID продукта. Введите числовое значение.\n\n"
+            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
             "Или введите /admin для возврата в меню."
         )
 
@@ -217,7 +217,7 @@ async def process_video_file(message: types.Message, state: FSMContext):
 async def process_unsupported_file(message: types.Message, state: FSMContext):
     """Обработка неподдерживаемого типа файла"""
     await message.answer(
-        "🔴 <b>Неподдерживаемый тип файла</b>\n\n"
+        "❌ <b>Неподдерживаемый тип файла</b>\n\n"
         "<b>Поддерживаемые форматы:</b>\n"
         "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
         "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)\n\n"
@@ -230,9 +230,9 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
     """Обработка названия файла и сохранение в БД"""
     if not message.text:
         await message.answer(
-            "🔴 Сообщение не содержит текста. Попробуйте ещё раз:",
+            "❌ Сообщение не содержит текста. Попробуйте ещё раз:",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -241,7 +241,7 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
     
     if not title:
         await message.answer(
-            "🔴 Название не может быть пустым. Попробуйте ещё раз:"
+            "❌ Название не может быть пустым. Попробуйте ещё раз:"
         )
         return
     
@@ -272,9 +272,18 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
             original_filename=data.get('original_filename')
         )
         
+        # После сохранения файла обновляем индексацию продукта
+        try:
+            from src.services.auto_chunking_service import AutoChunkingService
+            auto_chunking = AutoChunkingService()
+            await auto_chunking.reindex_product(data['product_id'], data['product_name'], session)
+            logger.info(f"Продукт {data['product_id']} переиндексирован после добавления файла")
+        except Exception as e:
+            logger.warning(f"Не удалось переиндексировать продукт {data['product_id']} после добавления файла: {e}")
+            # Не прерываем выполнение, так как файл уже добавлен
         
         await message.answer(
-            f"<b>Файл успешно добавлен!</b>\n\n"
+            f"<b>✅ Файл успешно добавлен!</b>\n\n"
             f"<b>Название:</b> {esc(title)}\n"
             f"<b>Продукт:</b> {esc(data['product_name'])}\n"
             f"<b>Тип:</b> {file_kind}\n\n"
@@ -282,11 +291,11 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
                 [types.InlineKeyboardButton(
-                    text="Добавить ещё файл", 
+                    text="📎 Добавить ещё файл", 
                     callback_data=f"add_more_files:{data['product_id']}"
                 )],
                 [types.InlineKeyboardButton(
-                    text="Админ меню", 
+                    text="⬅️ Назад в админ-меню", 
                     callback_data="admin:menu"
                 )]
             ])
@@ -297,10 +306,10 @@ async def process_file_title(message: types.Message, state: FSMContext, session:
         
     except Exception as e:
         await message.answer(
-            f"🔴 Ошибка при сохранении файла: {str(e)}\n\n"
+            f"❌ Ошибка при сохранении файла: {str(e)}\n\n"
             "Попробуйте ещё раз",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
         )
         await state.clear()
@@ -337,7 +346,6 @@ async def add_more_files_callback(callback: types.CallbackQuery, state: FSMConte
         except Exception:
             # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
             await callback.answer()
-            await callback.message.delete()
             await callback.message.answer(
                 f"<b>Добавление файла к продукту:</b> {esc(product['name'])}\n\n"
                 "Отправьте файл, который хотите добавить к этому продукту.\n\n"
@@ -358,21 +366,16 @@ async def return_to_admin_menu(callback: types.CallbackQuery):
                 "<b>🛠️ Панель Администратора</b>\n\n"
                 "Выберите действие:",
                 parse_mode="HTML",
-                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
-                    ]])
+                reply_markup=get_admin_main_menu_keyboard()
             )
         except Exception:
             # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
             await callback.answer()
-            await callback.message.delete()
             await callback.message.answer(
                 "<b>🛠️ Панель Администратора</b>\n\n"
                 "Выберите действие:",
                 parse_mode="HTML",
-                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
-                    ]])
+                reply_markup=get_admin_main_menu_keyboard()
             )
             return
     await callback.answer()

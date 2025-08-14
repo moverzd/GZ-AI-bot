@@ -55,7 +55,7 @@ def get_feedback_submitted_keyboard() -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="🔍 Каталог продукции",
+                text="🔍 Поиск по продукции",
                 callback_data="search:new"
             ),
             InlineKeyboardButton(

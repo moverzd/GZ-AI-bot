@@ -16,7 +16,7 @@ router = Router()
 async def admin_upload_main_image_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Загрузить главное фото' из админского меню"""
     if not is_admin:
-        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
+        await callback.answer("❌ У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(UploadMainImage.waiting_product_id)
@@ -24,26 +24,23 @@ async def admin_upload_main_image_callback(callback: types.CallbackQuery, state:
         try:
             # Пытаемся отредактировать как текстовое сообщение
             await callback.message.edit_text(
-                "<b>🔄🖼️ Загрузка главного изображения</b>\n\n"
-                "Введите ID продукта, для которого хотите загрузить главное изображение:\n"
-                "ℹ️ ID продукта можно найти в карточке продукта.\n"
-                "ℹ️ Для выхода в панель администратора введите /admin"
-                ,
+                "<b>🔄🖼️ Изменить главное фото продукта</b>\n\n"
+                "Введите ID продукта, для которого хотите изменить или удалить главное изображение:\n"
+            "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
         except Exception:
             # Если не получилось (например, сообщение с медиа), отправляем новое
             await callback.message.answer(
-                "<b>🖼️ Загрузка главного изображения</b>\n\n"
+                "<b>🔄🖼️ Изменить главное фото продукта</b>\n\n"
                 "Введите ID продукта, для которого хотите загрузить главное изображение:\n"
-                "ℹ️ ID продукта можно найти в карточке продукта."
-                "ℹ️ Для выхода в панель администратора введите /admin",
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             # Пытаемся удалить предыдущее сообщение
@@ -58,9 +55,9 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
     """Обработка ввода ID продукта для загрузки или удаления главного изображения"""
     if not message.text:
         await message.answer(
-            "🔴 Сообщение не содержит текста. Попробуйте ещё раз.",
+            "❌ Сообщение не содержит текста. Попробуйте ещё раз.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         return
@@ -74,10 +71,10 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         
         if not product:
             await message.answer(
-                "🔴 Продукт с таким ID не найден.\n\n"
+                "❌ Продукт с таким ID не найден.\n\n"
                 "Попробуйте ещё раз или введите /admin для возврата в меню.",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             return
@@ -101,10 +98,10 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             if not current_main_image:
                 await message.answer(
                     f"📦 <b>Продукт:</b> {esc(product['name'])}\n\n"
-                    "🔴 У этого продукта нет главного изображения для удаления.",
+                    "❌ У этого продукта нет главного изображения для удаления.",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
                 await state.clear()
@@ -121,11 +118,11 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
                 [
                     types.InlineKeyboardButton(
-                        text="🟢 Да, удалить",
+                        text="� Да, удалить",
                         callback_data=f"confirm_delete_main_image:{product_id}"
                     ),
                     types.InlineKeyboardButton(
-                        text="🔴 Отмена",
+                        text="� Отмена",
                         callback_data=f"cancel_delete_main_image:{product_id}"
                     )
                 ]
@@ -181,7 +178,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
                 ],
                 [
                     types.InlineKeyboardButton(
-                        text="⬅️ Назад в админ меню",
+                        text="⬅️ Назад в админ-меню",
                         callback_data="admin:menu"
                     )
                 ]
@@ -213,24 +210,25 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         
         response_text += (
             "<b>Пришлите изображение, которое станет главным для этого продукта</b>\n\n"
-            "⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF </i>"
+            "⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF</i>\n"
+            "💡 <i>Можно отправить как сжатое фото или как документ</i>"
         )
         
         await message.answer(
             response_text, 
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
         await state.set_state(UploadMainImage.waiting_image)
         
     except ValueError:
         await message.answer(
-            "🔴 Неверный формат ID продукта. Введите числовое значение.\n\n"
+            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
             "Или введите /admin для возврата в меню.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
         )
 
@@ -238,14 +236,38 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
 async def process_main_image_upload(message: types.Message, state: FSMContext, session: AsyncSession):
     """Обработка загрузки главного изображения"""
     
-    # Проверяем, что это изображение
-    if not message.photo:
+    # Определяем тип изображения и получаем file_id
+    file_id = None
+    file_size = None
+    
+    if message.photo:
+        # Сжатое изображение
+        photo = message.photo[-1]  # Берем изображение наибольшего размера
+        file_id = photo.file_id
+        file_size = photo.file_size
+    elif message.document and message.document.mime_type and message.document.mime_type.startswith('image/'):
+        # Документ-изображение (не сжатое) - отклоняем с просьбой прислать сжатое
         await message.answer(
-            "🔴 Пожалуйста, пришлите изображение.\n\n"
-            "⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF </i>",
+            "❌ <b>Ошибка загрузки изображения</b>\n\n"
+            "❌ Вы прислали несжатое изображение (как документ)\n"
+            "✅ Пожалуйста, пришлите <b>сжатый вариант</b> картинки\n\n"
+            "💡 <i>Для этого выберите изображение через скрепку → Фото и видео, а не через скрепку → Файл</i>",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
-            ]])
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+            ]]),
+            parse_mode="HTML"
+        )
+        return
+    else:
+        # Не изображение
+        await message.answer(
+            "❌ Пожалуйста, пришлите изображение.\n\n"
+            "⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF</i>\n"
+            "💡 <i>Отправьте через скрепку → Фото и видео (сжатый вариант)</i>",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+            ]]),
+            parse_mode="HTML"
         )
         return
     
@@ -257,16 +279,13 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         
         if not product_id:
             await message.answer(
-                "🔴 Ошибка: не найден ID продукта. Начните заново с команды /admin.",
+                "❌ Ошибка: не найден ID продукта. Начните заново с команды /admin.",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
             )
             await state.clear()
             return
-        
-        # Получаем наибольшее изображение из присланного
-        photo = message.photo[-1]  # Берем изображение наибольшего размера
         
         # Сначала физически удаляем текущее главное изображение, если оно есть
         await session.execute(
@@ -287,7 +306,7 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         # Скачиваем и сохраняем главное изображение
         new_main_image = await file_service.save_product_image(
             product_id=product_id,
-            file_id=photo.file_id,
+            file_id=file_id,
             is_main=True
         )
         
@@ -295,12 +314,12 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         await session.commit()
         
         file_size_text = ""
-        if photo.file_size:
-            file_size_kb = photo.file_size / 1024
+        if file_size:
+            file_size_kb = file_size / 1024
             file_size_text = f"📷 <b>Размер файла:</b> {file_size_kb:.1f} КБ\n"
         
         success_text = (
-            f"🟢 <b>Главное изображение успешно загружено!</b>\n\n"
+            f"✅ <b>Главное изображение успешно загружено!</b>\n\n"
             f"📦 <b>Продукт:</b> {esc(product_name)}\n"
             f"{file_size_text}\n"
             f"Теперь это изображение будет отображаться в карточке продукта."
@@ -309,12 +328,14 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         # Отправляем загруженное изображение как подтверждение
         # Обрезаем caption если слишком длинный
         success_text = truncate_caption(success_text)
+        
+        # Отправляем как сжатое фото (теперь принимаем только такие)
         await message.answer_photo(
-            photo=photo.file_id,
+            photo=file_id,
             caption=success_text,
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
         )
         
@@ -322,10 +343,10 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         
     except Exception as e:
         await message.answer(
-            f"🔴 Ошибка при загрузке изображения: {str(e)}\n\n"
+            f"❌ Ошибка при загрузке изображения: {str(e)}\n\n"
             "Попробуйте ещё раз или обратитесь к администратору.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
         )
         await state.clear()
@@ -334,7 +355,7 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
 async def admin_delete_main_image_callback(callback: types.CallbackQuery, state: FSMContext, is_admin: bool = False):
     """Обработчик кнопки 'Удалить главное фото' из админского меню"""
     if not is_admin:
-        await callback.answer("🔴 У вас нет прав администратора", show_alert=True)
+        await callback.answer("❌ У вас нет прав администратора", show_alert=True)
         return
     
     await state.set_state(UploadMainImage.waiting_product_id)
@@ -342,7 +363,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
     
     # Создаем клавиатуру с кнопкой "Назад"
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     
     if callback.message and isinstance(callback.message, types.Message):
@@ -351,7 +372,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
             await callback.message.edit_text(
                 "<b>🗑️🖼️ Удаление главного изображения</b>\n\n"
                 "Введите ID продукта, у которого хотите удалить главное изображение:\n"
-                "ℹ️ ID продукта можно найти в карточке продукта.",
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
@@ -360,7 +381,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
             await callback.message.answer(
                 "<b>🗑️🖼️ Удаление главного изображения</b>\n\n"
                 "Введите ID продукта, у которого хотите удалить главное изображение:\n"
-                "ℹ️ ID продукта можно найти в карточке продукта.",
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
@@ -395,7 +416,7 @@ async def confirm_delete_main_image(callback: types.CallbackQuery, session: Asyn
         product = await product_service.get_product_by_id(product_id)
         
         success_text = (
-            f"🟢 <b>Главное изображение успешно удалено!</b>\n\n"
+            f"✅ <b>Главное изображение успешно удалено!</b>\n\n"
             f"📦 <b>Продукт:</b> {esc(product['name'] if product else 'Неизвестен')}\n\n"
             f"Теперь карточка продукта будет отображаться без изображения."
         )
@@ -407,7 +428,7 @@ async def confirm_delete_main_image(callback: types.CallbackQuery, session: Asyn
                     success_text,
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
             except Exception:
@@ -416,7 +437,7 @@ async def confirm_delete_main_image(callback: types.CallbackQuery, session: Asyn
                     success_text,
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
                 # Пытаемся удалить предыдущее сообщение
@@ -424,27 +445,27 @@ async def confirm_delete_main_image(callback: types.CallbackQuery, session: Asyn
                     await callback.message.delete()
                 except Exception:
                     pass  # Игнорируем ошибку удаления
-        await callback.answer("🟢 Главное изображение удалено!")
+        await callback.answer("✅ Главное изображение удалено!")
         
     except Exception as e:
-        error_text = f"🔴 Ошибка при удалении изображения: {str(e)[:100]}"
+        error_text = f"❌ Ошибка при удалении изображения: {str(e)[:100]}"
         
         if callback.message and isinstance(callback.message, types.Message):
             try:
                 await callback.message.edit_text(
                     error_text,
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
             except Exception:
                 await callback.message.answer(
                     error_text,
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
                 )
-        await callback.answer("🔴 Ошибка удаления", show_alert=True)
+        await callback.answer("❌ Ошибка удаления", show_alert=True)
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith('cancel_delete_main_image:'))
@@ -458,7 +479,7 @@ async def cancel_delete_main_image(callback: types.CallbackQuery):
                 "Выберите действие:",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
             )
         except Exception:
@@ -468,7 +489,7 @@ async def cancel_delete_main_image(callback: types.CallbackQuery):
                 "Выберите действие:",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+                        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
             )
             # Пытаемся удалить предыдущее сообщение
@@ -476,7 +497,7 @@ async def cancel_delete_main_image(callback: types.CallbackQuery):
                 await callback.message.delete()
             except Exception:
                 pass  # Игнорируем ошибку удаления
-    await callback.answer("🟢 Удаление отменено")
+    await callback.answer("✅ Удаление отменено")
 
 @router.callback_query(lambda c: c.data and c.data.startswith('replace_main_image:'))
 async def replace_main_image(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
@@ -491,7 +512,7 @@ async def replace_main_image(callback: types.CallbackQuery, state: FSMContext, s
     product = await product_service.get_product_by_id(product_id)
     
     if not product:
-        await callback.answer("🔴 Продукт не найден", show_alert=True)
+        await callback.answer("❌ Продукт не найден", show_alert=True)
         return
     
     # Устанавливаем состояние ожидания изображения
@@ -502,12 +523,13 @@ async def replace_main_image(callback: types.CallbackQuery, state: FSMContext, s
         f"📦 <b>Продукт:</b> {esc(product['name'])}\n\n"
         f"🔄 <b>Замена главного изображения</b>\n\n"
         f"Пришлите новое изображение, которое заменит текущее главное изображение:\n\n"
-        f"⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF </i>"
+        f"⚠️ <i>Принимаются изображения таких форматов: JPG, PNG, GIF</i>\n"
+        f"💡 <i>Можно отправить как сжатое фото или как документ</i>"
     )
     
     # Создаем клавиатуру с кнопкой "Назад"
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-        types.InlineKeyboardButton(text="⬅️ Назад в админ меню", callback_data="admin:menu")
+        types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
     ]])
     
     if callback.message and isinstance(callback.message, types.Message):

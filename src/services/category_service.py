@@ -13,7 +13,18 @@ class CategoryService:
 
     async def get_all_categories(self) -> List[Category]:
         """
-        Вернуть все категории
+        Получить все категории, исключая скрытые для пользователей
         """
-        result = await self.session.execute(select(Category))
+        # Список названий категорий, которые нужно скрыть от пользователей
+        hidden_categories = [
+            "Материалы рулонные", 
+            "Праймеры «БРИТ»", 
+            "Промышленно-гражданские мастики"
+        ]
+        
+        result = await self.session.execute(
+            select(Category).where(
+                ~Category.name.in_(hidden_categories)
+            )
+        )
         return list(result.scalars().all())

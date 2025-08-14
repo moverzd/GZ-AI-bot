@@ -56,11 +56,6 @@ class Product(Base):
         back_populates='product', 
         cascade='all, delete-orphan'
     )
-    packages = relationship(
-        'ProductPackage', 
-        back_populates='product', 
-        cascade='all, delete-orphan'
-    )
 
 
 class ProductSphere(Base):
@@ -76,7 +71,6 @@ class ProductSphere(Base):
     description = Column(Text)
     advantages = Column(Text)
     notes = Column(Text)
-    package = Column(String(500))
     
     # Отношения
     product = relationship('Product', back_populates='product_spheres')
@@ -115,26 +109,6 @@ class ProductFile(Base):
     
     # Отношения
     product = relationship("Product", back_populates="files")
-
-
-class ProductPackage(Base):
-    """Упаковка продукта."""
-    
-    __tablename__ = 'product_package'
-    
-    id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey('products.id', ondelete="CASCADE"), nullable=False)
-    product_name = Column(String(255), nullable=False)
-    package_type = Column(String(100), nullable=False)
-    package_weight = Column(DECIMAL(8, 2), nullable=False)
-    packages_per_pallet = Column(Integer, nullable=False)
-    net_weight = Column(DECIMAL(8, 2), nullable=False)
-    created_at = Column(TIMESTAMP)
-    updated_at = Column(TIMESTAMP)
-    is_active = Column(Boolean, nullable=False, default=True)
-    
-    # Отношения
-    product = relationship("Product", back_populates="packages")
 
 
 class UserQuery(Base):
@@ -208,23 +182,18 @@ class UserFeedback(Base):
     response = relationship('BotResponse', back_populates='feedbacks')
 
 
-# Регистрация обработчиков событий SQLAlchemy
-@event.listens_for(Product, 'after_insert')
-def _on_product_insert(mapper, connection, target):
-    """Событие после создания продукта."""
-    from src.services.embeddings.sync_service import on_product_insert
-    on_product_insert(mapper, connection, target)
-
-
-@event.listens_for(Product, 'after_update')
-def _on_product_update(mapper, connection, target):
-    """Событие после обновления продукта."""
-    from src.services.embeddings.sync_service import on_product_update
-    on_product_update(mapper, connection, target)
-
-
-@event.listens_for(Product, 'after_delete')
-def _on_product_delete(mapper, connection, target):
-    """Событие после удаления продукта."""
-    from src.services.embeddings.sync_service import on_product_delete
-    on_product_delete(mapper, connection, target)
+# Регистрация обработчиков событий SQLAlchemy для ProductSphere
+@event.listens_for(ProductSphere, 'after_update')
+def _on_product_sphere_update(mapper, connection, target):
+    """Событие после обновления связи продукта со сферой."""
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"ProductSphere updated for product_id: {target.product_id}")
+        
+        # Обновление эмбеддингов будет происходить в ProductService.update_product_field
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Error in ProductSphere update handler: {e}")

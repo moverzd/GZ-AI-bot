@@ -1,66 +1,14 @@
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from src.database.repositories import ProductRepository
 from src.database.product_file_repositories import ProductFileRepository
-from src.database.models import Product, Category, ProductSphere, Sphere, ProductPackage
+from src.database.models import Product, Category, ProductSphere, Sphere
 from src.services.search.semantic_search import SemanticSearchService
-from src.core.utils import split_advantages
 
 import logging
 logger = logging.getLogger(__name__)
 
-
-def format_package_info(packages: List[ProductPackage]) -> Optional[str]:
-    """
-    Форматирует информацию об упаковке для отображения в карточке продукта.
-    Если хоть одно поле имеет значение 0, информация об упаковке не отображается.
-    """
-    if not packages:
-        return None
-    
-    # Фильтруем пакеты, где все поля больше 0
-    valid_packages = []
-    for package in packages:
-        try:
-            # Получаем значения атрибутов
-            weight = getattr(package, 'package_weight', 0)
-            pallet_count = getattr(package, 'packages_per_pallet', 0)
-            net = getattr(package, 'net_weight', 0)
-            
-            # Проверяем что все значения больше 0
-            if weight and float(weight) > 0 and pallet_count and int(pallet_count) > 0 and net and float(net) > 0:
-                valid_packages.append(package)
-        except (ValueError, TypeError, AttributeError):
-            continue
-    
-    if not valid_packages:
-        return None
-    
-    # Собираем информацию
-    package_types = []
-    package_weights = []
-    packages_per_pallet = []
-    net_weights = []
-    
-    for package in valid_packages:
-        # Экранируем HTML символы в типе упаковки
-        from src.core.utils import esc
-        package_types.append(esc(str(getattr(package, 'package_type', ''))))
-        weight = float(getattr(package, 'package_weight', 0))
-        package_weights.append(f"{weight:.1f} кг")
-        packages_per_pallet.append(str(getattr(package, 'packages_per_pallet', 0)))
-        net = float(getattr(package, 'net_weight', 0))
-        net_weights.append(f"{net:.1f} кг")
-    
-    # Формируем текст
-    text = "<b>Информация по упаковке:</b>\n"
-    text += f"• Тип упаковки: {', '.join(package_types)}\n"
-    text += f"• Вес одного места: {', '.join(package_weights)}\n" 
-    text += f"• Количество тары на одном паллете: {', '.join(packages_per_pallet)}\n"
-    text += f"• Вес НЕТТО: {', '.join(net_weights)}\n"
-    
-    return text
 
 class ProductService:
     """
@@ -85,14 +33,6 @@ class ProductService:
         media_files = await self.file_repo.get_media_files(product_id)
         all_files = await self.file_repo.get_all_files(product_id)
         
-        # Упаковка
-        packages_query = select(ProductPackage).where(
-            ProductPackage.product_id == product_id,
-            ProductPackage.is_active == True
-        )
-        packages_result = await self.session.execute(packages_query)
-        packages = packages_result.scalars().all()
-        
         # Получаем категорию
         category_query = select(Category).where(Category.id == product.category_id)
         category_result = await self.session.execute(category_query)
@@ -112,249 +52,235 @@ class ProductService:
         # Собираем объект
         product_info = {
             "id": product.id,
-            "name": sphere_product_name or product.name or "Без Названия",
-            "description": None,
-            "category": category,
+            "name": sphere_product_name if sphere_product_name else product.name,
+            "category": category.name if category else None,
+            "category_id": product.category_id,
             "main_image": main_image,
             "documents": documents,
-            "media_files": media_files,
+            "media": media_files,
             "all_files": all_files,
-            "packages": packages,
-            "spheres": [],
-            "spheres_info": []  # Добавляем для совместимости с handler
+            "spheres": self._format_spheres(spheres),
+            "spheres_info": [self._sphere_to_dict(sphere) for sphere in spheres],
+            "created_at": product.created_at,
+            "updated_at": product.updated_at,
+            "is_deleted": product.is_deleted
         }
 
-        descriptions = []
-        for sphere in spheres:
-            advantages = split_advantages(str(sphere.advantages))
-            sphere_desc = str(sphere.description)
-            if sphere_desc and sphere_desc.strip() and sphere_desc.lower() not in ['none', 'null', '-']:
-                descriptions.append(sphere_desc)
-            
-            sphere_data = {
-                "id": sphere.id,
-                "name": sphere.sphere_name,
-                "description": sphere.description,
-                "advantages": advantages,
-                "notes": sphere.notes,
-            }
-            
-            product_info["spheres"].append(sphere_data)
-            product_info["spheres_info"].append(sphere_data)  # Дублируем для совместимости
-
-        if descriptions:
-            product_info["description"] = descriptions[0]
-        
         return product_info
-        
-    async def get_products_by_category(self, category_id: int) -> List[Tuple[Product, Optional[str]]]:
+    
+    def _format_spheres(self, spheres: List[ProductSphere]) -> List[Dict[str, Any]]:
         """
-        Получаем продукты по категории с изображениями
+        Форматирует список сфер применения для отображения
+        """
+        formatted_spheres = []
+        
+        for sphere_link in spheres:
+            formatted_sphere = {
+                "id": sphere_link.sphere_id,
+                "name": sphere_link.sphere_name,
+                "product_name": sphere_link.product_name
+            }
+            formatted_spheres.append(formatted_sphere)
+        
+        return formatted_spheres
+    
+    def _sphere_to_dict(self, sphere: ProductSphere) -> Dict[str, Any]:
+        """
+        Конвертирует объект ProductSphere в словарь
+        """
+        return {
+            "id": sphere.id,
+            "sphere_id": sphere.sphere_id,
+            "sphere_name": sphere.sphere_name,
+            "product_name": sphere.product_name,
+            "description": sphere.description,
+            "advantages": sphere.advantages,
+            "notes": sphere.notes
+        }
+
+    async def get_all_products(self) -> List[Dict[str, Any]]:
+        """
+        Получаем все продукты
+        """
+        products = await self.product_repo.get_all()
+        return [await self._product_to_dict(product) for product in products]
+
+    async def _product_to_dict(self, product: Product) -> Dict[str, Any]:
+        """
+        Конвертирует объект Product в словарь
+        """
+        # Получаем категорию
+        category_query = select(Category).where(Category.id == product.category_id)
+        category_result = await self.session.execute(category_query)
+        category = category_result.scalars().first()
+
+        # Получаем основную картинку
+        main_image = await self.file_repo.get_main_image(product.id)
+
+        return {
+            "id": product.id,
+            "name": product.name,
+            "category": category.name if category else None,
+            "category_id": product.category_id,
+            "main_image": main_image,
+            "created_at": product.created_at,
+            "updated_at": product.updated_at,
+            "is_deleted": product.is_deleted
+        }
+
+    async def search_products(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Поиск продуктов по названию
+        """
+        products = await self.product_repo.search_by_name(query, limit)
+        return [await self._product_to_dict(product) for product in products]
+
+    async def get_products_by_category(self, category_id: int) -> List[Dict[str, Any]]:
+        """
+        Получаем продукты по категории
         """
         products = await self.product_repo.get_by_category(category_id)
-        results = []
-        
-        # Добавляем изображения для каждого продукта
-        for product in products:
-            main_image = await self.file_repo.get_main_image(getattr(product, 'id'))
-            results.append((product, main_image))
-        
-        return results
+        return [await self._product_to_dict(product) for product in products]
+
+    async def get_products_by_sphere(self, sphere_id: int) -> List[Dict[str, Any]]:
+        """
+        Получаем продукты по сфере применения
+        """
+        # Получаем связи продуктов со сферами
+        spheres_query = select(ProductSphere).where(ProductSphere.sphere_id == sphere_id)
+        result = await self.session.execute(spheres_query)
+        product_spheres = result.scalars().all()
+
+        products_info = []
+        for product_sphere in product_spheres:
+            product = await self.product_repo.get_by_id(product_sphere.product_id)
+            if product and not product.is_deleted:
+                product_dict = await self._product_to_dict(product)
+                
+                # Добавляем информацию из связи со сферой
+                product_dict.update({
+                    "sphere_id": product_sphere.sphere_id,
+                    "sphere_name": product_sphere.sphere_name,
+                    "product_name": product_sphere.product_name,
+                    "description": product_sphere.description,
+                    "advantages": product_sphere.advantages,
+                    "notes": product_sphere.notes
+                })
+                
+                products_info.append(product_dict)
+
+        return products_info
 
     async def update_product_field(self, product_id: int, field: str, value: str) -> bool:
         """
-        Обновляет конкретное поле продукта и автоматически переиндексирует его
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        product_fields = ['name']
-        product_sphere_fields = ['description', 'advantages', 'notes']
-        
-        result = False
-        
-        if field in product_fields:
-            result = await self.product_repo.update_product_field(product_id, field, value)
-            if field == 'name' and result:
-                await self.product_repo.sync_product_name_to_spheres(product_id, value)
-        elif field in product_sphere_fields:
-            result = await self.product_repo.update_product_sphere_field(product_id, field, value)
-        else:
-            return False
-        
-        # Автоматическая переиндексация при успешном обновлении любого поля
-        if result:
-            try:
-                from src.services.auto_chunking_service import AutoChunkingService
-                from src.database.connection import AsyncSessionLocal
-                
-                logger.info(f"[ProductService] Запуск автоматической переиндексации продукта {product_id} после изменения поля '{field}'")
-                
-                auto_chunking = AutoChunkingService()
-                session = AsyncSessionLocal()
-                
-                try:
-                    # Получаем информацию о продукте для переиндексации
-                    product_info = await self.get_product_by_id(product_id)
-                    if product_info:
-                        reindex_result = await auto_chunking.reindex_product(
-                            product_id=product_id,
-                            product_name=product_info['name'],
-                            session=session
-                        )
-                        if reindex_result["success"]:
-                            logger.info(f"[ProductService] Автоматическая переиндексация продукта {product_id} завершена успешно: {reindex_result['total_chunks']} чанков")
-                        else:
-                            logger.warning(f"[ProductService] Ошибка автоматической переиндексации продукта {product_id}: {reindex_result.get('error', 'Неизвестная ошибка')}")
-                    else:
-                        logger.warning(f"[ProductService] Продукт {product_id} не найден для переиндексации")
-                finally:
-                    await session.close()
-                    
-            except Exception as e:
-                logger.error(f"[ProductService] Ошибка при автоматической переиндексации продукта {product_id}: {e}")
-                # Не прерываем выполнение, если переиндексация не удалась
-        
-        return result
-    
-    async def get_product_package(self, product_id: int) -> Optional[ProductPackage]:
-        """
-        Получает информацию об упаковке продукта из таблицы product_package
-        """
-        from sqlalchemy import select
-        
-        result = await self.session.execute(
-            select(ProductPackage).where(
-                ProductPackage.product_id == product_id,
-                ProductPackage.is_active == True
-            )
-        )
-        return result.scalars().first()
-    
-    async def update_or_create_product_package(
-        self, 
-        product_id: int, 
-        package_type: str,
-        package_weight: float,
-        packages_per_pallet: int,
-        net_weight: float
-    ) -> bool:
-        """
-        Обновляет или создает информацию об упаковке продукта
+        Обновляет поле продукта в зависимости от типа поля
         """
         try:
-            from sqlalchemy import select
-            
-            # Получаем продукт для проверки существования и получения имени
-            product_result = await self.session.execute(
-                select(Product).where(Product.id == product_id, Product.is_deleted == False)
-            )
-            product = product_result.scalars().first()
-            
-            if not product:
-                return False
-            
-            # Проверяем, есть ли уже запись об упаковке для этого продукта
-            existing_result = await self.session.execute(
-                select(ProductPackage).where(
-                    ProductPackage.product_id == product_id,
-                    ProductPackage.is_active == True
-                )
-            )
-            existing_package = existing_result.scalars().first()
-            
-            if existing_package:
-                # Обновляем существующую запись
-                existing_package.package_type = package_type
-                existing_package.package_weight = package_weight
-                existing_package.packages_per_pallet = packages_per_pallet
-                existing_package.net_weight = net_weight
+            if field == "name":
+                # Обновляем название продукта
+                success = await self.product_repo.update_product_field(product_id, field, value)
+                if not success:
+                    return False
+                
+                # Синхронизируем название в ProductSphere записях
+                await self.product_repo.sync_product_name_to_spheres(product_id, value)
+            elif field in ["description", "advantages", "notes"]:
+                # Обновляем поля в ProductSphere через репозиторий
+                success = await self.product_repo.update_product_sphere_field(product_id, field, value)
+                if not success:
+                    return False
             else:
-                # Создаем новую запись
-                new_package = ProductPackage(
-                    product_id=product_id,
-                    product_name=product.name,
-                    package_type=package_type,
-                    package_weight=package_weight,
-                    packages_per_pallet=packages_per_pallet,
-                    net_weight=net_weight,
-                    is_active=True
-                )
-                self.session.add(new_package)
-            
-            await self.session.commit()
+                return False
+
+            # Обновляем эмбеддинги после успешного изменения
+            try:
+                from src.services.auto_chunking_service import AutoChunkingService
+                
+                # Получаем актуальное название продукта
+                product_info = await self.get_product_by_id(product_id)
+                product_name = product_info.get('name', f'Product_{product_id}') if product_info else f'Product_{product_id}'
+                
+                auto_chunking = AutoChunkingService()
+                await auto_chunking.reindex_product(product_id, product_name, self.session)
+                logger.info(f"Эмбеддинги для продукта {product_id} обновлены после изменения поля {field}")
+            except Exception as e:
+                logger.warning(f"Не удалось обновить эмбеддинги для продукта {product_id}: {e}")
+                # Не прерываем выполнение, так как основное обновление уже прошло успешно
+
             return True
-            
         except Exception as e:
+            logger.error(f"Ошибка обновления поля {field} продукта {product_id}: {e}")
             await self.session.rollback()
             return False
-    
-    async def get_product_text_for_indexing(self, product_id: int) -> Optional[str]:
+
+    async def get_categories(self) -> List[Dict[str, Any]]:
         """
-        Получает текстовое представление продукта для индексации в векторной БД.
-        Включает информацию об упаковке из таблицы product_package.
+        Получаем все категории
         """
-        product_info = await self.get_product_by_id(product_id)
-        if not product_info:
-            return None
+        query = select(Category)
+        result = await self.session.execute(query)
+        categories = result.scalars().all()
         
-        # Собираем текстовое представление
-        text_parts = []
+        return [{"id": cat.id, "name": cat.name} for cat in categories]
+
+    async def get_spheres(self) -> List[Dict[str, Any]]:
+        """
+        Получаем все сферы применения
+        """
+        query = select(Sphere)
+        result = await self.session.execute(query)
+        spheres = result.scalars().all()
         
-        # Базовая информация
-        text_parts.append(f"Продукт: {product_info['name']}")
-        
-        if product_info.get('category'):
-            text_parts.append(f"Категория: {product_info['category'].name}")
-        
-        # Описание
-        if product_info.get('description'):
-            text_parts.append(f"Описание: {product_info['description']}")
-        
-        # Сферы применения
-        spheres = product_info.get('spheres', [])
-        for sphere in spheres:
-            if sphere.get('name'):
-                text_parts.append(f"Сфера применения: {sphere['name']}")
+        return [{"id": sphere.id, "name": sphere.name} for sphere in spheres]
+
+    async def get_product_text_for_indexing(self, product_id: int) -> str:
+        """
+        Получает текстовое представление продукта для индексации в векторной базе
+        """
+        try:
+            # Получаем основную информацию о продукте
+            product = await self.product_repo.get_by_id(product_id)
+            if not product:
+                return ""
+
+            # Получаем категорию
+            category_query = select(Category).where(Category.id == product.category_id)
+            category_result = await self.session.execute(category_query)
+            category = category_result.scalars().first()
+
+            # Получаем сферы применения
+            spheres_query = select(ProductSphere).where(ProductSphere.product_id == product_id)
+            result = await self.session.execute(spheres_query)
+            spheres = result.scalars().all()
+
+            # Формируем текстовое представление
+            text_parts = []
             
-            # Преимущества
-            if sphere.get('advantages'):
-                advantages_text = " ".join(sphere['advantages'])
-                text_parts.append(f"Преимущества: {advantages_text}")
+            # Основная информация
+            if spheres and len(spheres) > 0 and spheres[0].product_name is not None and str(spheres[0].product_name).strip():
+                text_parts.append(f"Название продукта: {spheres[0].product_name}")
+            else:
+                text_parts.append(f"Название продукта: {product.name}")
             
-            # Расход/примечания
-            if sphere.get('notes'):
-                text_parts.append(f"Расход: {sphere['notes']}")
-        
-        # Информация об упаковке из новой таблицы product_package
-        packages = product_info.get('packages', [])
-        for package in packages:
-            try:
-                weight = getattr(package, 'package_weight', 0)
-                pallet_count = getattr(package, 'packages_per_pallet', 0)
-                net = getattr(package, 'net_weight', 0)
-                package_type = getattr(package, 'package_type', '')
+            if category:
+                text_parts.append(f"Категория: {category.name}")
+
+            # Информация по сферам применения
+            for sphere in spheres:
+                if sphere.sphere_name is not None and str(sphere.sphere_name).strip():
+                    text_parts.append(f"Сфера применения: {sphere.sphere_name}")
                 
-                # Добавляем информацию об упаковке только если все поля заполнены
-                if weight and float(weight) > 0 and pallet_count and int(pallet_count) > 0 and net and float(net) > 0:
-                    text_parts.append(f"Тип упаковки: {package_type}")
-                    text_parts.append(f"Вес одного места: {weight} кг")
-                    text_parts.append(f"Количество тары на одном паллете: {pallet_count}")
-                    text_parts.append(f"Вес нетто: {net} кг")
-            except (ValueError, TypeError, AttributeError):
-                continue
-        
-        return "\n".join(text_parts)
+                if sphere.description is not None and str(sphere.description).strip():
+                    text_parts.append(f"Описание: {sphere.description}")
+                
+                if sphere.advantages is not None and str(sphere.advantages).strip():
+                    text_parts.append(f"Преимущества: {sphere.advantages}")
+                
+                if sphere.notes is not None and str(sphere.notes).strip():
+                    text_parts.append(f"Примечания: {sphere.notes}")
 
-    async def search_products_by_query(self, query: str, category_id: Optional[int] = None, limit: int = 3) -> List[Product]:
-        """
-        Выполняет семантический поиск продуктов по запросу.
-        Создает временный поисковый сервис для выполнения запроса.
-        """
-        # Создаем поисковый сервис
-        search_service = SemanticSearchService(self.session)
-        await search_service.embedding_service.initialize()
-        
-        return await search_service.find_products_by_query(query, category_id, limit=limit)
+            return "\n".join(text_parts)
 
-
+        except Exception as e:
+            logger.error(f"Ошибка получения текста для индексации продукта {product_id}: {e}")
+            return ""

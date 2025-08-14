@@ -62,7 +62,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
     search_results = await search_service.find_products_by_query(
         query=query,
         category_id=None,  # Можно добавить фильтр по категории из контекста
-        user_id=message.from_user.id,
+        user_id=message.from_user.id if message.from_user else None,
         limit=20  # Максимум результатов для лексического поиска
     )
     
@@ -72,7 +72,7 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
             "Попробуйте другой запрос или воспользуйтесь меню каталога.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(
-                    text="🔍 Каталог продукции", 
+                    text="🔍 Поиск по продукции", 
                     callback_data="search:new"
                 ),
                 types.InlineKeyboardButton(
@@ -97,15 +97,15 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
         buttons.append([
             types.InlineKeyboardButton(
                 text=f"{product_name}",
-                # Добавляем информацию об источнике (search) и запросе
-                callback_data=f"product:{product.id}:search:{query}"
+                # Используем короткий callback_data без запроса
+                callback_data=f"product:{product.id}:search"
             )
         ])
     
     # Добавляем кнопки навигации
     buttons.append([
         types.InlineKeyboardButton(
-            text="🔍 Каталог продукции", 
+            text="🔍 Поиск по продукции", 
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(
@@ -209,7 +209,7 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
                         "Попробуйте Каталог продукции или воспользуйтесь каталогом."
         no_results_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
             types.InlineKeyboardButton(
-                text="🔍 Каталог продукции", 
+                text="🔍 Поиск по продукции", 
                 callback_data="search:new"
             ),
             types.InlineKeyboardButton(
@@ -259,15 +259,15 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
         buttons.append([
             types.InlineKeyboardButton(
                 text=f"{product_name}",
-                # Добавляем информацию об источнике (search) и запросе
-                callback_data=f"product:{product.id}:search:{query}"
+                # Используем короткий callback_data без запроса
+                callback_data=f"product:{product.id}:search"
             )
         ])
     
     # Добавляем кнопки навигации
     buttons.append([
         types.InlineKeyboardButton(
-            text="🔍 Каталог продукции", 
+            text="🔍 Поиск по продукции", 
             callback_data="search:new"
         ),
         types.InlineKeyboardButton(

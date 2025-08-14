@@ -2,7 +2,10 @@
 
 ## Быстрый старт
 
-### 1. Создание окружения
+### 1. Созда**6. user_queries** - Логирование запросов пользователей
+- `id`, `user_id`, `username`, `query_text`, `query_type`, `created_at`
+
+**7. bot_responses** - Метрики ответов системыокружения
 ```bash
 conda create -n gzbot python=3.12
 conda activate gzbot
@@ -60,13 +63,10 @@ python bot.py
 **5. product_files** - Файлы и медиа
 - `id`, `product_id`, `file_id`, `kind`, `ordering`, `title`, `local_path`, `is_main_image`
 
-**6. product_package** - Информация об упаковке
-- `id`, `product_id`, `package_info`
-
-**7. user_queries** - Логирование запросов пользователей
+**6. user_queries** - Логирование запросов пользователей
 - `id`, `user_id`, `username`, `query_text`, `query_type`, `created_at`
 
-**8. bot_responses** - Метрики ответов системы
+**7. bot_responses** - Метрики ответов системы
 - `id`, `query_id`, `response_text`, `response_type`, `execution_time`, `sources_count`, `message_id`, `created_at`
 
 ### ChromaDB - векторное хранилище

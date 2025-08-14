@@ -98,23 +98,6 @@ CREATE TABLE `product_files` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ========================================
--- Информация об упаковке продуктов
--- ========================================
-DROP TABLE IF EXISTS `product_package`;
-CREATE TABLE `product_package` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `product_id` int unsigned NOT NULL,
-  `product_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `package_info` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `ux_product_package` (`product_id`),
-  KEY `fk_pp_product` (`product_id`),
-  CONSTRAINT `fk_pp_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ========================================
 -- Группы продуктов (если используется)
 -- ========================================
 DROP TABLE IF EXISTS `product_groups`;
@@ -131,21 +114,6 @@ CREATE TABLE `product_groups` (
 -- ========================================
 -- Триггеры для автоматической синхронизации
 -- ========================================
-
--- Триггер для обновления названия продукта в product_package
-DELIMITER ;;
-CREATE TRIGGER `update_package_product_name` 
-AFTER UPDATE ON `products` 
-FOR EACH ROW 
-BEGIN
-    -- Обновляем product_name в таблице product_package если изменилось название продукта
-    IF OLD.name != NEW.name THEN
-        UPDATE `product_package` 
-        SET `product_name` = NEW.name, `updated_at` = CURRENT_TIMESTAMP
-        WHERE `product_id` = NEW.id;
-    END IF;
-END;;
-DELIMITER ;
 
 -- ========================================
 -- Индексы для оптимизации производительности

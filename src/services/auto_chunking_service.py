@@ -158,7 +158,7 @@ class AutoChunkingService:
                 product_name=product_name,
                 full_text=product_text,
                 file_path=None,  # Это не файл, а метаданные
-                description="Метаданные продукта: описание, упаковка, сферы применения"
+                description="Метаданные продукта: описание, сферы применения"
             )
             
             result["success"] = True
@@ -209,7 +209,7 @@ class AutoChunkingService:
             await self.embedding_service.delete_product_embeddings(product_id)
             logger.info(f"[AutoChunking] Удалены старые эмбеддинги для продукта {product_id}")
             
-            # Сначала индексируем метаданные продукта (описание, упаковка, сферы применения)
+            # Сначала индексируем метаданные продукта (описание, сферы применения)
             metadata_result = await self.index_product_metadata(product_id, product_name, session)
             if metadata_result["success"]:
                 result["total_chunks"] += metadata_result["chunks_created"]

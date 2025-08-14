@@ -48,12 +48,12 @@ async def check_system_status() -> dict:
     Возвращает словарь со статусами
     """
     status = {
-        'database': '❌ Не подключена',
-        'vector_database': '❌ Не подключена', 
-        'rag_system': '❌ Не готова',
-        'embedding_model': '❌ Не загружена',
-        'file_service': '❌ Не готов',
-        'search_system': '❌ Не готова'
+        'database': '🔴 Не подключена',
+        'vector_database': '🔴 Не подключена', 
+        'rag_system': '🔴 Не готова',
+        'embedding_model': '🔴 Не загружена',
+        'file_service': '🔴 Не готов',
+        'search_system': '🔴 Не готова'
     }
     
     try:
@@ -62,17 +62,17 @@ async def check_system_status() -> dict:
         session = AsyncSessionLocal()
         await session.execute(text("SELECT 1"))  # Простой тест запрос
         await session.close()
-        status['database'] = '✅ Подключена'
+        status['database'] = '🟢 Подключена'
     except Exception as e:
-        status['database'] = f'❌ Ошибка: {str(e)[:50]}'
+        status['database'] = f'🔴 Ошибка: {str(e)[:50]}'
     
     try:
         # Проверяем модель эмбеддингов
         # Попробуем предзагрузить модель если она еще не загружена
         model_manager.preload_model()
-        status['embedding_model'] = '✅ Готова к использованию'
+        status['embedding_model'] = '🟢 Готова к использованию'
     except Exception as e:
-        status['embedding_model'] = f'❌ Ошибка: {str(e)[:50]}'
+        status['embedding_model'] = f'🔴 Ошибка: {str(e)[:50]}'
     
     try:
         # Проверяем векторную базу данных через сервис эмбеддингов
@@ -83,14 +83,14 @@ async def check_system_status() -> dict:
             await embedding_service.initialize()
         stats = await embedding_service.get_statistics()
         if 'error' not in stats:
-            status['vector_database'] = f'✅ Подключена ({stats.get("total_embeddings", 0)} записей)'
-            status['rag_system'] = '✅ Готова'
+            status['vector_database'] = f'🟢 Подключена ({stats.get("total_embeddings", 0)} записей)'
+            status['rag_system'] = '🟢 Готова'
         else:
-            status['vector_database'] = '❌ Ошибка подключения'
-            status['rag_system'] = '❌ Не готова'
+            status['vector_database'] = '🔴 Ошибка подключения'
+            status['rag_system'] = '🔴 Не готова'
     except Exception as e:
-        status['vector_database'] = f'❌ Ошибка: {str(e)[:50]}'
-        status['rag_system'] = '❌ Не готова'
+        status['vector_database'] = f'🔴 Ошибка: {str(e)[:50]}'
+        status['rag_system'] = '🔴 Не готова'
     
     try:
         # Проверяем файловый сервис
@@ -98,9 +98,9 @@ async def check_system_status() -> dict:
         file_service = FileService(session)
         stats = await file_service.get_files_stats()
         await session.close()
-        status['file_service'] = f'✅ Готов ({stats["total_files"]} файлов)'
+        status['file_service'] = f'🟢 Готов ({stats["total_files"]} файлов)'
     except Exception as e:
-        status['file_service'] = f'❌ Ошибка: {str(e)[:50]}'
+        status['file_service'] = f'🔴 Ошибка: {str(e)[:50]}'
     
     try:
         # Проверяем поисковую систему
@@ -109,9 +109,9 @@ async def check_system_status() -> dict:
         search_service = HybridSearchService(session)
         await session.close()
         # Если сервис создался без ошибок, считаем его готовым
-        status['search_system'] = '✅ Готова'
+        status['search_system'] = '🟢 Готова'
     except Exception as e:
-        status['search_system'] = f'❌ Ошибка: {str(e)[:50]}'
+        status['search_system'] = f'🔴 Ошибка: {str(e)[:50]}'
     
     return status
 
@@ -132,7 +132,7 @@ def format_startup_status_for_telegram(status: dict) -> str:
     message += f"Поисковая система: {status['search_system']}\n\n"
     
     # Проверяем общий статус
-    all_ready = all('✅' in status_text for status_text in status.values())
+    all_ready = all('🟢' in status_text for status_text in status.values())
     if all_ready:
         message += "🟢 <b>Все системы полностью работают!</b>"
     else:
@@ -159,7 +159,7 @@ def print_startup_status(status: dict):
     print("="*60)
     
     # Проверяем общий статус
-    all_ready = all('✅' in status_text for status_text in status.values())
+    all_ready = all('🟢' in status_text for status_text in status.values())
     if all_ready:
         print("ВСЕ СИСТЕМЫ ГОТОВЫ К РАБОТЕ!")
     else:
@@ -188,7 +188,7 @@ async def main():
 
     # Проверяем наличие токена
     if not settings.bot_token:
-        print("❌ Ошибка: токен бота не найден в настройках!")
+        print("🔴 Ошибка: токен бота не найден в настройках!")
         return
 
     logger.info("Запуск Telegram бота")

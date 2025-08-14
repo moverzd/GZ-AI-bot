@@ -88,3 +88,31 @@ def split_advantages(raw: Optional[str]) -> List[str]:
     
     return items
 
+def format_advantages_for_telegram(advantages_text: Optional[str]) -> str:
+    """
+    Форматирует преимущества для отображения в Telegram с использованием bullet points.
+    Ожидается формат через точку с запятой: "преимущество1; преимущество2; преимущество3"
+    """
+    if not advantages_text or not advantages_text.strip():
+        return ""
+    
+    text = advantages_text.strip()
+    
+    # Проверяем, есть ли точка с запятой
+    if ';' in text:
+        items = [item.strip() for item in text.split(';') if item.strip()]
+        
+        if len(items) == 1:
+            # Если только одно преимущество, выводим без буллета
+            return items[0]
+        
+        # Форматируем как список с буллетами
+        formatted_lines = []
+        for item in items:
+            formatted_lines.append(f"• {item}")
+        
+        return '\n'.join(formatted_lines)
+    else:
+        # Если нет точки с запятой, возвращаем как есть
+        return text
+

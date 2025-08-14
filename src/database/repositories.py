@@ -20,6 +20,15 @@ class ProductRepository:
         )
         return result.scalars().first()
     
+    async def get_all(self) -> List[Product]:
+        """
+        Возвращает все продукты.
+        """
+        result = await self.session.execute(
+            select(Product).where(Product.is_deleted == False)
+        )
+        return list(result.scalars().all())
+    
     async def get_by_category(self, category_id: int) -> List[Product]:
         """
         Поиск продуктов по категории.
@@ -107,7 +116,7 @@ class ProductRepository:
                 return False
             
             # Проверяем, что поле существует в модели ProductSphere
-            allowed_fields = ['description', 'advantages', 'notes', 'package']
+            allowed_fields = ['description', 'advantages', 'notes']
             if field not in allowed_fields:
                 return False
             
