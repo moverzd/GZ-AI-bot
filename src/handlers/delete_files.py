@@ -84,7 +84,10 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
         if not product:
             await message.answer(
                 "❌ Продукт с таким ID не найден.\n\n"
-                "Попробуйте ещё раз или введите /admin для возврата в меню."
+                "Попробуйте ещё раз:",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+                ]])
             )
             return
         
@@ -114,8 +117,10 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
         
     except ValueError:
         await message.answer(
-            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
-            "Или введите /admin для возврата в меню."
+            "❌ Неверный формат ID продукта. Введите числовое значение:",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+            ]])
         )
 
 async def show_files_list(message_or_callback, session: AsyncSession, product_id: int, files: list, product_name: str, is_callback: bool = False):

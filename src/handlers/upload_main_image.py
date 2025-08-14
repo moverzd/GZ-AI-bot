@@ -72,7 +72,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         if not product:
             await message.answer(
                 "❌ Продукт с таким ID не найден.\n\n"
-                "Попробуйте ещё раз или введите /admin для возврата в меню.",
+                "Попробуйте ещё раз:",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
@@ -225,8 +225,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         
     except ValueError:
         await message.answer(
-            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
-            "Или введите /admin для возврата в меню.",
+            "❌ Неверный формат ID продукта. Введите числовое значение:",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
@@ -279,7 +278,7 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
         
         if not product_id:
             await message.answer(
-                "❌ Ошибка: не найден ID продукта. Начните заново с команды /admin.",
+                "❌ Ошибка: не найден ID продукта. Начните заново:",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])

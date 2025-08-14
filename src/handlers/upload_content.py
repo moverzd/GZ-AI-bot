@@ -107,7 +107,10 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         if not product:
             await message.answer(
                 "❌ Продукт с таким ID не найден.\n\n"
-                "Попробуйте ещё раз или введите /admin для возврата в меню."
+                "Попробуйте ещё раз:",
+                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+                ]])
             )
             return
         
@@ -120,15 +123,19 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
             "Теперь отправьте файл, который хотите добавить к этому продукту.\n\n"
             "<b>Поддерживаемые форматы:</b>\n"
             "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
-            "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)\n\n"
-            "Или введите /admin для возврата в меню.",
-            parse_mode="HTML"
+            "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
+            parse_mode="HTML",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+            ]])
         )
         
     except ValueError:
         await message.answer(
-            "❌ Неверный формат ID продукта. Введите числовое значение.\n\n"
-            "Или введите /admin для возврата в меню."
+            "❌ Неверный формат ID продукта. Введите числовое значение:",
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+            ]])
         )
 
 @router.message(AddFiles.waiting_file, F.document)
@@ -221,8 +228,11 @@ async def process_unsupported_file(message: types.Message, state: FSMContext):
         "<b>Поддерживаемые форматы:</b>\n"
         "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
         "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)\n\n"
-        "Попробуйте загрузить файл другого формата или введите /admin для возврата в меню.",
-        parse_mode="HTML"
+        "Попробуйте загрузить файл другого формата:",
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
+            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
+        ]])
     )
 
 @router.message(AddFiles.waiting_title)

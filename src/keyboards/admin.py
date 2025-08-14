@@ -39,7 +39,7 @@ def get_delete_confirm_keyboard(product_id: int) -> InlineKeyboardMarkup:
     Создает клавиатуру подтверждения удаления
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="🔴 Подтвердить удаление", callback_data=f"confirm_delete:{product_id}")
-    builder.button(text="🟢 Отмена", callback_data="admin:menu")
+    builder.button(text="✅ Подтвердить удаление", callback_data=f"confirm_delete:{product_id}")
+    builder.button(text="❌ Отмена", callback_data="admin:menu")
     builder.adjust(1)
     return builder.as_markup()
