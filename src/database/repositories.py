@@ -112,7 +112,12 @@ class ProductRepository:
         try:
             # Проверяем, что запись существует
             product_sphere = await self.get_product_sphere_by_product_id(product_id)
+            
             if not product_sphere:
+                # Если записи нет, возвращаем False с логированием
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Продукт {product_id} не имеет записи в products_sphere для поля {field}")
                 return False
             
             # Проверяем, что поле существует в модели ProductSphere

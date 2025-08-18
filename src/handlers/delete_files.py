@@ -42,7 +42,7 @@ async def admin_delete_files_callback(callback: types.CallbackQuery, state: FSMC
         try:
             await callback.message.edit_text(
                 "<b>🗑📎 Удаление файлов продукта</b>\n\n"
-                "Введите ID продукта, файлы которого хотите удалить:\n"
+                "Введите ID продукта, файлы которого хотите удалить:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -54,7 +54,8 @@ async def admin_delete_files_callback(callback: types.CallbackQuery, state: FSMC
             await callback.message.delete()
             await callback.message.answer(
                 "<b>🗑📎 Удаление файлов продукта</b>\n\n"
-                "Введите , файлы которого хотите удалить:\n",
+                "Введите ID продукта, файлы которого хотите удалить:\n\n"
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
@@ -83,8 +84,7 @@ async def process_product_id_for_delete_files(message: types.Message, state: FSM
         
         if not product:
             await message.answer(
-                "❌ Продукт с таким ID не найден.\n\n"
-                "Попробуйте ещё раз:",
+                "❌ Продукт с данным ID не найден или удален.\n\nПопробуйте ввести другой ID:",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
@@ -229,11 +229,11 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
     confirmation_text = (
         f"⚠️ <b>Подтверждение удаления файла</b>\n\n"
         f"📦 <b>Продукт:</b> {esc(product['name'])}\n"
-        f"{icon} <b>Название:</b> {esc(file_title)}\n"
-        f"📝 <b>Тип файла:</b> {file_kind}\n"
-        f"📊 <b>Размер:</b> {size_text}\n"
-        f"📄 <b>Исходное имя:</b> {esc(original_name)}\n"
-        f"📅 <b>Загружено:</b> {upload_date}\n\n"
+        f"<b>Название:</b> {esc(file_title)}\n"
+        f"<b>Тип файла:</b> {file_kind}\n"
+        f"<b>Размер:</b> {size_text}\n"
+        f"<b>Исходное имя:</b> {esc(original_name)}\n"
+        f"<b>Загружено:</b> {upload_date}\n\n"
         f"<b>Вы уверены, что хотите удалить этот файл?</b>\n"
         f"<i>Это действие нельзя отменить!</i>"
     )
@@ -241,11 +241,11 @@ async def confirm_file_deletion(callback: types.CallbackQuery, session: AsyncSes
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
         [
             types.InlineKeyboardButton(
-                text="� Да, удалить",
+                text="✅ Да, удалить",
                 callback_data=f"confirm_delete_file:{file_id}"
             ),
             types.InlineKeyboardButton(
-                text="� Отмена",
+                text="❌ Отмена",
                 callback_data=f"cancel_delete_file:{file_record.product_id}"
             )
         ]

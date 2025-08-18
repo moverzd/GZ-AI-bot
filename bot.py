@@ -285,7 +285,7 @@ async def main():
         from src.keyboards.admin import get_admin_main_menu_keyboard
         
         admin_text = (
-            '<b>🛠️ Панель администратора</b>\n\n'
+            '<b>🛠️ Админ-меню по продукции</b>\n\n'
             '📋 Выберите действие:'
         )
 

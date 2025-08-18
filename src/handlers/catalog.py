@@ -340,7 +340,7 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
             navigation_buttons.append(main_menu_button)
             
             await callback.message.edit_text(
-                "Продукт не найден или удален.",
+                "❌ Продукт с данным ID не найден или удален.\n\nПопробуйте ввести другой ID:",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[navigation_buttons])
             )
         await callback.answer()
@@ -384,9 +384,12 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
                     from src.core.utils import format_advantages_for_telegram
                     formatted_advantages = format_advantages_for_telegram(advantages)
                     if formatted_advantages:
-                        text += f"<b>Преимущества:</b>\n{esc(formatted_advantages)}\n\n"
-                    break  # Берем преимущества только из первой сферы
-            
+                        text += f"<b>Преимущества:</b>\n{formatted_advantages}\n\n"
+                break  # Берем преимущества только из первой сферы
+    
+    # Отдельный цикл для расхода
+    if product_info.get("spheres_info"):
+        for sphere in product_info["spheres_info"]:
             # Расход = примечания
             notes = sphere.get("notes")
             if notes and str(notes).strip() and str(notes).strip() not in ['-','нет', 'null']:
@@ -562,8 +565,8 @@ async def show_product_details(callback: types.CallbackQuery, session: AsyncSess
                             parse_mode="HTML"
                         )
                 else:
-                    # Если у продукта нет изображения - редактируем текстовое сообщение
-                    await callback.message.edit_text(
+                    # Если у продукта нет изображения - отправляем новое текстовое сообщение
+                    await callback.message.answer(
                         text,
                         reply_markup=keyboard,
                         parse_mode="HTML"

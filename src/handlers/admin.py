@@ -1,8 +1,8 @@
 from aiogram import Router, types
-from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, update, insert, delete
 from typing import cast
 import logging
 
@@ -38,7 +38,7 @@ async def admin_menu_callback(callback: types.CallbackQuery, state: FSMContext, 
     from src.keyboards.admin import get_admin_main_menu_keyboard
     
     admin_text = (
-        '<b>🛠️ Панель администратора продукции</b>\n'
+        '<b>🛠️ Админ-меню</b>\n'
         '📋 Выберите действие:'
     )
     
@@ -112,7 +112,7 @@ async def admin_edit_product_callback(callback: types.CallbackQuery, state: FSMC
         try:
             await callback.message.edit_text(
                 "✏️📦 <b>Редактирование продукта</b>\n\n"
-                "🔢 Введите ID продукта для редактирования:\n"
+                "Введите ID продукта для редактирования:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=keyboard
@@ -122,7 +122,7 @@ async def admin_edit_product_callback(callback: types.CallbackQuery, state: FSMC
             await callback.answer()
             await callback.message.answer(
                 "✏️📦 <b>Редактирование продукта</b>\n\n"
-                "🔢 Введите ID продукта для редактирования:\n\n"
+                "Введите ID продукта для редактирования:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=keyboard
@@ -148,8 +148,7 @@ async def admin_delete_product_callback(callback: types.CallbackQuery, state: FS
         try:
             await callback.message.edit_text(
                 "🗑️📦 <b>Удаление продукта</b>\n\n"
-                "🔢 Введите ID продукта для удаления:\n\n"
-                "⚠️ <i>Внимание: продукт будет помечен как удаленный</i>\n"
+                "Введите ID продукта для удаления:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=keyboard
@@ -159,8 +158,7 @@ async def admin_delete_product_callback(callback: types.CallbackQuery, state: FS
             await callback.answer()
             await callback.message.answer(
                 "🗑️📦 <b>Удаление продукта</b>\n\n"
-                "🔢 Введите ID продукта для удаления:\n\n"
-                "⚠️ <i>Внимание: продукт будет помечен как удаленный</i>\n"
+                "Введите ID продукта для удаления:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>\n",
                 parse_mode="HTML",
                 reply_markup=keyboard
@@ -168,25 +166,7 @@ async def admin_delete_product_callback(callback: types.CallbackQuery, state: FS
             return
     await callback.answer()
 
-@router.message(Command('add_product'))
-async def start_add_product(message: types.Message, state: FSMContext, is_admin: bool = False):
-    """Добавить продукт в админ-меню"""
-    if not is_admin:
-        await message.answer(
-            "❌ У вас нет прав администратора",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-        return
-    
-    await state.set_state(AddProd.waiting_name)
-    await message.answer(
-        "Введите название нового продукта:",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-        ]])
-    )
+# Команда /add_product удалена - используйте админ-панель
 
 @router.message(AddProd.waiting_name)
 async def process_name(message: types.Message, state: FSMContext, session: AsyncSession):
@@ -411,7 +391,7 @@ async def process_advantages(message: types.Message, state: FSMContext):
     if advantages:
         from src.core.utils import format_advantages_for_telegram
         formatted_advantages = format_advantages_for_telegram(advantages)
-        message_text = f"✅ Преимущества сохранены:\n{formatted_advantages}\n\n"
+        message_text = f"<b>✅ Преимущества сохранены:</b>\n{formatted_advantages}\n\n"
     
     message_text += (
         "Введите информацию о расходе:\n"
@@ -502,7 +482,7 @@ async def process_consumption(message: types.Message, state: FSMContext, session
         
         # Формируем сообщение об успешном создании с форматированием преимуществ
         product_info = [
-            f"<b>Продукт успешно создан!</b>\n",
+            f"<b>✅ Продукт успешно создан!</b>\n",
             f"<b>ID</b>: {product_id}",
             f"<b>Название</b>: {esc(name)}",
             f"<b>Категория</b>: {esc(str(category.name))}",
@@ -510,7 +490,7 @@ async def process_consumption(message: types.Message, state: FSMContext, session
         ]
         
         if description:
-            product_info.append(f"Описание: {esc(description[:300])}{'...' if len(description) > 300 else ''}")
+            product_info.append(f"<b>Описание</b>: {esc(description[:300])}{'...' if len(description) > 300 else ''}")
         
         if advantages:
             from src.core.utils import format_advantages_for_telegram
@@ -518,10 +498,10 @@ async def process_consumption(message: types.Message, state: FSMContext, session
             # Ограничиваем длину для сообщения подтверждения
             if len(formatted_advantages) > 300:
                 formatted_advantages = formatted_advantages[:300] + '...'
-            product_info.append(f"Преимущества:\n{esc(formatted_advantages)}")
+            product_info.append(f"<b>Преимущества</b>:\n{esc(formatted_advantages)}")
         
         if consumption:
-            product_info.append(f"Расход: {esc(consumption[:100])}{'...' if len(consumption) > 100 else ''}")
+            product_info.append(f"<b>Расход</b>: {esc(consumption[:100])}{'...' if len(consumption) > 100 else ''}")
         
         # Добавляем кнопку "Назад в админ-меню" к сообщению об успехе
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -539,108 +519,7 @@ async def process_consumption(message: types.Message, state: FSMContext, session
     await state.clear()
 
 
-@router.message(Command('delete_product'))
-async def start_delete_product(message: types.Message, state: FSMContext, command: CommandObject, session: AsyncSession, is_admin: bool = False):
-    """Удаление продукта по ID (только для админов)"""
-    if not is_admin:
-        await message.answer(
-            "❌ У вас нет прав администратора",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-        return
-    
-    # Проверяем, передан ли ID в команде
-    if not command.args:
-        await message.answer(
-            "🗑️📦 <b>Использование команды:</b>\n"
-            "<code>/delete_product ID</code>\n\n"
-            "Пример: <code>/delete_product 123</code>\n\n"
-            "ℹ️ ID продукта можно узнать в каталоге или поиске.",
-            parse_mode="HTML",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-        return
-    
-    try:
-        product_id = int(command.args.strip())
-        
-        # Проверяем существование продукта и что он не удален
-        result = await session.execute(
-            select(Product, Category).join(Category).where(
-                Product.id == product_id
-            ).where(Product.is_deleted == False)
-        )
-        product_data = result.first()
-        
-        if not product_data:
-            await message.answer(
-                f"❌ Продукт с ID {product_id} не найден или уже удален.",
-                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                    types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-                ]])
-            )
-            return
-        
-        product, category = product_data
-        
-        # Получаем информацию о сферах продукта
-        spheres_result = await session.execute(
-            select(ProductSphere).where(ProductSphere.product_id == product_id)
-        )
-        product_spheres = spheres_result.scalars().all()
-        
-        # Формируем информацию о продукте
-        product_info = [
-            f"🗑️📦 <b>Подтверждение удаления</b>\n",
-            f"ID: {product.id}",
-            f"Название: {esc(str(product.name))}",
-            f"Категория: {esc(str(category.name))}"
-        ]
-        
-        if product_spheres:
-            spheres_names = [str(ps.sphere_name) for ps in product_spheres if ps.sphere_name is not None]
-            if spheres_names:
-                product_info.append(f"🎯 Сферы: {esc(', '.join(spheres_names))}")
-        
-        product_info.extend([
-            "",
-            "⚠️ <b>Внимание!</b> Продукт будет помечен как удаленный.",
-            "Это значит, что продукт больше не будет доступен в каталоге и поиске.",
-            "",
-            "Подтвердите действие:"
-        ])
-        
-        # Создаем клавиатуру с кнопками подтверждения
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"delete_confirm:{product_id}"),
-                types.InlineKeyboardButton(text="❌ Нет, отменить", callback_data=f"delete_cancel:{product_id}")
-            ]
-        ])
-        
-        await message.answer("\n".join(product_info), parse_mode="HTML", reply_markup=keyboard)
-        
-    except ValueError:
-        await message.answer(
-            "❌ <b>Неверный формат ID</b>\n\n"
-            "Используйте: <code>/delete_product ID</code>\n"
-            "Пример: <code>/delete_product 123</code>",
-            parse_mode="HTML",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-    except Exception as e:
-        await message.answer(
-            f"❌ Ошибка при поиске продукта: {str(e)[:100]}",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
+# Команда /delete_product удалена - используйте админ-панель
 
 
 # Обработчик кнопки подтверждения удаления 
@@ -665,11 +544,11 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
         if not product:
             if callback.message and isinstance(callback.message, types.Message):
                 try:
-                    await callback.message.edit_text("❌ Продукт не найден или уже удален.")
+                    await callback.message.edit_text("❌ Продукт с данным ID не найден или уже удален. \n\nПопробуйте ввести другой ID:")
                 except Exception:
                     await callback.answer()
                     await callback.message.delete()
-                    await callback.message.answer("❌ Продукт не найден или уже удален.")
+                    await callback.message.answer("❌ Продукт с данным ID не найден или уже удален. \n\nПопробуйте ввести другой ID:")
                     return
             await callback.answer()
             return
@@ -739,14 +618,14 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
             try:
                 await callback.message.edit_text(
                     f"✅ <b>Продукт успешно удален!</b>\n\n"
-                    f"ID: {product_id}\n"
-                    f"Название: {esc(str(product.name))}\n"
-                    f"Статус: Удален\n\n"
-                    f"Продукт помечен как удаленный\n"
+                    f"<b>ID:</b> {product_id}\n"
+                    f"<b>Название:</b> {esc(str(product.name))}\n"
+                    f"<b>Статус:</b> удален\n\n"
+                    f"<b>Продукт помечен как удаленный</b>\n"
                     f"Все связанные файлы удалены\n"
-                    f"Эмбеддинги удалены из векторной БД\n"
+                    f"Эмбеддинги удалены из векторной бд\n"
                     f"Физические файлы удалены с диска\n\n"
-                    f"✅ Продукт больше не отображается в каталоге.",
+                    f"<b>Продукт больше не отображается в каталоге.</b>",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
@@ -757,14 +636,14 @@ async def confirm_delete_product_callback(callback: types.CallbackQuery, state: 
                 await callback.message.delete()
                 await callback.message.answer(
                     f"✅ <b>Продукт успешно удален!</b>\n\n"
-                    f"ID: {product_id}\n"
-                    f"Название: {esc(str(product.name))}\n"
-                    f"Статус: Удален\n\n"
-                    f"✅ Продукт помечен как удаленный\n"
-                    f"✅ Все связанные файлы удалены\n"
-                    f"✅ Эмбеддинги удалены из векторной БД\n"
-                    f"✅ Физические файлы удалены с диска\n\n"
-                    f"Продукт больше не отображается в каталоге.",
+                    f"<b>ID:</b> {product_id}\n"
+                    f"<b>Название:</b> {esc(str(product.name))}\n"
+                    f"<b>Статус:</b> удален\n\n"
+                    f"<b>Продукт помечен как удаленный</b>\n"
+                    f"Все связанные файлы удалены\n"
+                    f"Эмбеддинги удалены из векторной бд\n"
+                    f"Физические файлы удалены с диска\n\n"
+                    f"<b>Продукт больше не отображается в каталоге.</b>",
                     parse_mode="HTML",
                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
@@ -862,7 +741,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
                 types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             await message.answer(
-                f"❌ Продукт с ID {product_id} не найден или уже удален.\n",
+                f"❌ Продукт с данным ID не найден или уже удален. \n\nПопробуйте ввести другой ID:",
                 reply_markup=keyboard
             )
             return
@@ -886,12 +765,11 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
         if product_spheres:
             spheres_names = [str(ps.sphere_name) for ps in product_spheres if ps.sphere_name is not None]
             if spheres_names:
-                product_info.append(f"Сферы: {esc(', '.join(spheres_names))}")
+                product_info.append(f"<b>Сферы:</b> {esc(', '.join(spheres_names))}")
         
         product_info.extend([
             "",
-            "⚠️ <b>Внимание!</b> Продукт будет помечен как удаленный.",
-            "Это действие удалит продукт из каталога.",
+            "⚠️ <b>Внимание!</b> Продукт перестанет быть доступным в каталоге и поиске, это действие безвозвратное!",
             "",
             "Подтвердите действие:"
         ])
@@ -912,9 +790,7 @@ async def process_delete_product_id_fsm(message: types.Message, state: FSMContex
             types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
-            "<b>Неверный формат ID</b>\n\n"
-            "Введите число.\n",
-            parse_mode="HTML",
+           "❌ Неверный формат ID продукта.\n\nВведите числовое значение:",
             reply_markup=keyboard
         )
     except Exception as e:
@@ -955,7 +831,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
                 types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
             await message.answer(
-                f"❌ Продукт с ID {product_id} не найден или удален.\n",
+                f"❌ Продукт с данным ID не найден или удален.\n\nПопробуйте ввести другой ID:",
                 reply_markup=keyboard
             )
             return
@@ -980,8 +856,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
             types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
         ]])
         await message.answer(
-            "❌ Неверный формат ID. Введите число.\n",
-            reply_markup=keyboard
+           "❌ Неверный формат ID продукта. \n\nВведите числовое значение:\n",            reply_markup=keyboard
         )
     except Exception as e:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -994,76 +869,7 @@ async def process_edit_product_id(message: types.Message, state: FSMContext, ses
         )
 
 
-@router.message(Command('get_products'))
-async def get_all_products(message: types.Message, session: AsyncSession, is_admin: bool = False):
-    """Команда для получения всех ID продуктов с их названиями"""
-    if not is_admin:
-        await message.answer(
-            "❌ У вас нет прав администратора",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-        return
-    
-    try:
-        # Получаем все продукты
-        result = await session.execute(select(Product).order_by(Product.id))
-        products = result.scalars().all()
-        
-        if not products:
-            keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-            await message.answer("📦 В базе данных нет продуктов", reply_markup=keyboard)
-            return
-        
-        # Формируем список продуктов
-        text = "<b>📋 Список всех продуктов:</b>\n\n"
-        
-        for product in products:
-            text += f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
-        
-        # Если сообщение слишком длинное, разбиваем на части
-        if len(text) > 4000:
-            # Отправляем по частям
-            messages = []
-            current_message = "<b>📋 Список всех продуктов:</b>\n\n"
-            
-            for product in products:
-                line = f"<b>ID:</b> {product.id} - {esc(str(product.name))}\n"
-                
-                if len(current_message + line) > 4000:
-                    messages.append(current_message)
-                    current_message = line
-                else:
-                    current_message += line
-            
-            if current_message:
-                messages.append(current_message)
-            
-            # Отправляем все части
-            keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-            for i, msg_text in enumerate(messages):
-                if i == 0:
-                    await message.answer(msg_text, parse_mode="HTML")
-                elif i == len(messages) - 1:  # Последнее сообщение с кнопкой
-                    await message.answer(f"<b>📋 Продолжение списка:</b>\n\n{msg_text}", parse_mode="HTML", reply_markup=keyboard)
-                else:
-                    await message.answer(f"<b>📋 Продолжение списка:</b>\n\n{msg_text}", parse_mode="HTML", reply_markup=keyboard)
-        else:
-            keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-            await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
-            
-    except Exception as e:
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[[
-            types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-        ]])
-        await message.answer(f"❌ Ошибка при получении списка продуктов: {str(e)}", reply_markup=keyboard)
+# Команда /get_products удалена - используйте админ-панель
 
 @router.callback_query(lambda c: c.data == 'admin:get_products')
 async def admin_get_products_callback(callback: types.CallbackQuery, session: AsyncSession, is_admin: bool = False):

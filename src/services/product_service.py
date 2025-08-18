@@ -57,7 +57,7 @@ class ProductService:
             "category_id": product.category_id,
             "main_image": main_image,
             "documents": documents,
-            "media": media_files,
+            "media_files": media_files,
             "all_files": all_files,
             "spheres": self._format_spheres(spheres),
             "spheres_info": [self._sphere_to_dict(sphere) for sphere in spheres],

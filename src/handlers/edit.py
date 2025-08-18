@@ -1,8 +1,8 @@
 from aiogram import Router, types
-from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update, insert, delete
 
 from src.filters.admin import AdminFilter
 from src.services.product_service import ProductService
@@ -13,57 +13,7 @@ from src.keyboards.admin import get_edit_field_keyboard
 router = Router()
 router.message.filter(AdminFilter())
 
-@router.message(Command('edit_product'))
-async def cmd_edit(message: types.Message, state: FSMContext, command:
-                    CommandObject, session: AsyncSession):
-    """
-    /edit <id> или /edit_product <id> - редактирование продукта
-    """
-
-    if not command.args:
-        await message.answer(
-            "❌ Не указан ID продукта.\n\n"
-            "<b>Использование:</b>\n"
-            "• <code>/edit_product id_продукта</code>\n"
-            "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
-            parse_mode="HTML"
-        )
-        return
-    
-    try:
-        product_id = int(command.args)
-    except ValueError:
-        await message.answer(
-            "❌ Некорректный ID продукта. Используйте число.",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-        return
-    
-    # Получаем информацию о продукте
-    product_service = ProductService(session)
-    product_info = await product_service.get_product_by_id(product_id)
-    
-    if not product_info:
-        await message.answer(
-            f"❌ Продукт с ID {product_id} не найден или удален.",
-            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
-        )
-        return
-    
-    # Сохраняем ID продукта в состоянии
-    await state.update_data(product_id=product_id)
-    
-    # Показываем меню выбора поля для редактирования
-    await message.answer(
-        f"✏️📦 Редактирование продукта: <b>{product_info['name']}</b>\n\n"
-        "Выберите поле для редактирования:",
-        reply_markup=get_edit_field_keyboard(product_id),
-        parse_mode="HTML"
-    )
+# Команда /edit_product удалена - используйте админ-панель
 
 
 @router.callback_query(lambda c: c.data.startswith("field:"))
@@ -95,7 +45,7 @@ async def choose_field(callback: types.CallbackQuery, state: FSMContext, session
     # Определяем понятное название поля
     field_names = {
         "name": "название",
-        "description": "полное описание",
+        "description": "описание",
         "advantages": "преимущества",
         "notes": "расход"
     }
@@ -108,7 +58,7 @@ async def choose_field(callback: types.CallbackQuery, state: FSMContext, session
     
     if not product_info:
         if callback.message and isinstance(callback.message, types.Message):
-            await callback.message.edit_text("Продукт не найден или удален")
+            await callback.message.edit_text("❌ Продукт с данным ID не найден или удален.\n\nПопробуйте ввести другой ID:")
         await callback.answer()
         return
     
@@ -122,7 +72,13 @@ async def choose_field(callback: types.CallbackQuery, state: FSMContext, session
         if spheres_info:
             current_value = spheres_info[0].get(field_name, "")
     
-    current_text = f"<b>Текущее значение:</b> {esc(current_value)}" if current_value else "<b>Текущее значение:</b> не задано"
+    # Форматируем текущее значение для отображения
+    if field_name == "advantages" and current_value:
+        from src.core.utils import format_advantages_for_telegram
+        formatted_current = format_advantages_for_telegram(current_value)
+        current_text = f"<b>Текущее значение:</b>\n{formatted_current}"
+    else:
+        current_text = f"<b>Текущее значение:</b> {esc(current_value)}" if current_value else "<b>Текущее значение:</b> не задано"
     
     # Формируем базовое сообщение
     message_text = (
@@ -180,7 +136,7 @@ async def back_to_edit_menu(callback: types.CallbackQuery, state: FSMContext, se
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
-        await callback.answer("Продукт не найден или удален")
+        await callback.answer("❌ Продукт с данным ID не найден или удален.\n\nПопробуйте ввести другой ID:")
         return
     
     # Очищаем состояние редактирования поля
@@ -226,7 +182,7 @@ async def back_to_edit_menu_old(callback: types.CallbackQuery, state: FSMContext
     product_info = await product_service.get_product_by_id(product_id)
     
     if not product_info:
-        await callback.answer("Продукт не найден или удален")
+        await callback.answer("❌ Продукт с данным ID не найден или удален.\n\nПопробуйте ввести другой ID:")
         return
     
     # Очищаем состояние редактирования поля
@@ -294,14 +250,20 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
         updated_product_info = await product_service.get_product_by_id(int(product_id))
         
         if updated_product_info:
-            # Формируем сообщение с форматированием для преимуществ
+            # Формируем сообщение с отображением обновленного поля
             success_text = f"✅ Значение поля успешно обновлено!\n\n"
             
-            # Если обновлялись преимущества, показываем их с форматированием
+            # Показываем обновленное значение в зависимости от типа поля
             if field == "advantages":
                 from src.core.utils import format_advantages_for_telegram
                 formatted_advantages = format_advantages_for_telegram(new_value)
                 success_text += f"<b>Новые преимущества:</b>\n{formatted_advantages}\n\n"
+            elif field == "description":
+                success_text += f"<b>Новое описание:</b>\n{esc(new_value)}\n\n"
+            elif field == "notes":
+                success_text += f"<b>Новый расход:</b>\n{esc(new_value)}\n\n"
+            elif field == "name":
+                success_text += f"<b>Новое название:</b> {esc(new_value)}\n\n"
             
             success_text += f"Продолжить редактирование продукта: <b>{esc(updated_product_info['name'])}</b>"
             
@@ -319,11 +281,31 @@ async def save_value(message: types.Message, state: FSMContext, session: AsyncSe
                 ]])
             )
     else:
+        # Проверяем, в чем причина ошибки
+        if field in ["description", "advantages", "notes"]:
+            # Если это поле из ProductSphere, проверяем наличие записи
+            from src.database.repositories import ProductRepository
+            product_repo = ProductRepository(session)
+            product_sphere = await product_repo.get_product_sphere_by_product_id(int(product_id))
+            
+            if not product_sphere:
+                error_message = (
+                    f"❌ <b>Ошибка редактирования поля '{field}'</b>\n\n"
+                    f"У продукта не настроены сферы применения.\n"
+                    f"Для редактирования описания, преимуществ и расхода необходимо сначала назначить продукту сферу применения.\n\n"
+                    f"💡 <i>Обратитесь к администратору для настройки сфер применения.</i>"
+                )
+            else:
+                error_message = "❌ Произошла ошибка при обновлении поля."
+        else:
+            error_message = "❌ Произошла ошибка при обновлении поля."
+        
         await message.answer(
-            "❌ Произошла ошибка при обновлении поля.",
+            error_message,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
-            ]])
+            ]]),
+            parse_mode="HTML"
         )
     
     # Сбрасываем состояние

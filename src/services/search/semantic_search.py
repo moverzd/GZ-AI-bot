@@ -18,11 +18,12 @@ class SemanticSearchService(BaseSearchService):
     
     def __init__(self, session: AsyncSession):
         self.session = session
-        # Используем унифицированный сервис для поиска по продуктам (без чанкинга)
+        # Используем унифицированный сервис для поиска по продуктам
+        # ВАЖНО: Используем ту же коллекцию, что и AutoChunkingService для синхронизации
         self.embedding_service = UnifiedEmbeddingService(
-            enable_chunking=False,
+            enable_chunking=True,  # Включаем чанкинг для совместимости с AutoChunkingService
             chroma_path="./chroma_db",
-            collection_name="product_embeddings"
+            collection_name="product_chunks_embeddings"  # Та же коллекция, что использует AutoChunkingService
         )
         # Инициализируем сервис эмбеддингов
         import asyncio

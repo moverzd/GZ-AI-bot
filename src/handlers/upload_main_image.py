@@ -25,8 +25,8 @@ async def admin_upload_main_image_callback(callback: types.CallbackQuery, state:
             # Пытаемся отредактировать как текстовое сообщение
             await callback.message.edit_text(
                 "<b>🔄🖼️ Изменить главное фото продукта</b>\n\n"
-                "Введите ID продукта, для которого хотите изменить или удалить главное изображение:\n"
-            "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
+                "Введите ID продукта, для которого хотите изменить или удалить главное изображение:\n\n"
+                "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
@@ -36,7 +36,7 @@ async def admin_upload_main_image_callback(callback: types.CallbackQuery, state:
             # Если не получилось (например, сообщение с медиа), отправляем новое
             await callback.message.answer(
                 "<b>🔄🖼️ Изменить главное фото продукта</b>\n\n"
-                "Введите ID продукта, для которого хотите загрузить главное изображение:\n"
+                "Введите ID продукта, для которого хотите загрузить главное изображение:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -72,7 +72,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         if not product:
             await message.answer(
                 "❌ Продукт с таким ID не найден.\n\n"
-                "Попробуйте ещё раз:",
+                "Попробуйте ввести другой ID:",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
@@ -118,11 +118,11 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
                 [
                     types.InlineKeyboardButton(
-                        text="� Да, удалить",
+                        text="✅ Да, удалить",
                         callback_data=f"confirm_delete_main_image:{product_id}"
                     ),
                     types.InlineKeyboardButton(
-                        text="� Отмена",
+                        text="❌ Отмена",
                         callback_data=f"cancel_delete_main_image:{product_id}"
                     )
                 ]
@@ -160,7 +160,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
             # Если есть главное изображение, предлагаем выбор
             response_text += (
                 "🖼️ <b>У продукта уже есть главное изображение</b>\n\n"
-                "Выберите действие:"
+                "📋 Выберите действие:"
             )
  
             keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
@@ -225,7 +225,7 @@ async def process_product_id_for_main_image(message: types.Message, state: FSMCo
         
     except ValueError:
         await message.answer(
-            "❌ Неверный формат ID продукта. Введите числовое значение:",
+            "❌ Неверный формат ID \n\nВведите число:\n",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
@@ -343,7 +343,7 @@ async def process_main_image_upload(message: types.Message, state: FSMContext, s
     except Exception as e:
         await message.answer(
             f"❌ Ошибка при загрузке изображения: {str(e)}\n\n"
-            "Попробуйте ещё раз или обратитесь к администратору.",
+            "Попробуйте ещё раз.",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                     ]])
@@ -370,7 +370,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
             # Пытаемся отредактировать как текстовое сообщение
             await callback.message.edit_text(
                 "<b>🗑️🖼️ Удаление главного изображения</b>\n\n"
-                "Введите ID продукта, у которого хотите удалить главное изображение:\n"
+                "Введите ID продукта, у которого хотите удалить главное изображение:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=keyboard
@@ -379,7 +379,7 @@ async def admin_delete_main_image_callback(callback: types.CallbackQuery, state:
             # Если не получилось (например, сообщение с медиа), отправляем новое
             await callback.message.answer(
                 "<b>🗑️🖼️ Удаление главного изображения</b>\n\n"
-                "Введите ID продукта, у которого хотите удалить главное изображение:\n"
+                "Введите ID продукта, у которого хотите удалить главное изображение:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=keyboard
@@ -475,7 +475,7 @@ async def cancel_delete_main_image(callback: types.CallbackQuery):
             # Пытаемся отредактировать как текстовое сообщение
             await callback.message.edit_text(
                 "<b>Администрирование</b>\n\n"
-                "Выберите действие:",
+                "📋 Выберите действие:",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
@@ -485,7 +485,7 @@ async def cancel_delete_main_image(callback: types.CallbackQuery):
             # Если не получилось (например, сообщение с медиа), отправляем новое
             await callback.message.answer(
                 "<b>Администрирование</b>\n\n"
-                "Выберите действие:",
+                "📋 Выберите действие:",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                         types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")

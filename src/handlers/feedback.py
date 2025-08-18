@@ -51,28 +51,15 @@ async def handle_positive_feedback(callback: types.CallbackQuery, session: Async
         )
         
         if feedback:
-            # Обновляем сообщение с благодарностью
+            # Отправляем новое сообщение с благодарностью (не изменяем ответ AI)
             thank_you_text = (
                 "✅ <b>Спасибо за ваш отзыв!</b>\n\n"
                 "Ваша оценка поможет нам улучшить качество ответов AI.\n"
                 "Чем еще могу помочь?"
             )
             
-            if callback.message and hasattr(callback.message, 'edit_text'):
-                try:
-                    await callback.message.edit_text(
-                        thank_you_text,
-                        reply_markup=get_feedback_submitted_keyboard(),
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    # Если не удалось отредактировать, отправляем новое сообщение
-                    await callback.message.answer(
-                        thank_you_text,
-                        reply_markup=get_feedback_submitted_keyboard(),
-                        parse_mode="HTML"
-                    )
-            elif callback.message:
+            # Всегда отправляем новое сообщение, чтобы не изменять ответ AI
+            if callback.message:
                 await callback.message.answer(
                     thank_you_text,
                     reply_markup=get_feedback_submitted_keyboard(),
@@ -156,20 +143,8 @@ async def handle_negative_feedback(callback: types.CallbackQuery, session: Async
                 "что именно можно улучшить?"
             )
             
-            if callback.message and hasattr(callback.message, 'edit_text'):
-                try:
-                    await callback.message.edit_text(
-                        thank_you_text,
-                        reply_markup=keyboard,
-                        parse_mode="HTML"
-                    )
-                except Exception:
-                    await callback.message.answer(
-                        thank_you_text,
-                        reply_markup=keyboard,
-                        parse_mode="HTML"
-                    )
-            elif callback.message:
+            # Всегда отправляем новое сообщение, чтобы не изменять ответ AI
+            if callback.message:
                 await callback.message.answer(
                     thank_you_text,
                     reply_markup=keyboard,
@@ -208,30 +183,8 @@ async def request_comment(callback: types.CallbackQuery, state: FSMContext):
             "<i>Напишите ваш комментарий в следующем сообщении:</i>"
         )
         
-        if callback.message and hasattr(callback.message, 'edit_text'):
-            try:
-                await callback.message.edit_text(
-                    comment_text,
-                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(
-                            text="❌ Отмена",
-                            callback_data="feedback:cancel"
-                        )
-                    ]]),
-                    parse_mode="HTML"
-                )
-            except Exception:
-                await callback.message.answer(
-                    comment_text,
-                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                        types.InlineKeyboardButton(
-                            text="❌ Отмена",
-                            callback_data="feedback:cancel"
-                        )
-                    ]]),
-                    parse_mode="HTML"
-                )
-        elif callback.message:
+        # Всегда отправляем новое сообщение
+        if callback.message:
             await callback.message.answer(
                 comment_text,
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -324,20 +277,8 @@ async def handle_feedback_cancel(callback: types.CallbackQuery, state: FSMContex
         "Чем еще могу помочь?"
     )
     
-    if callback.message and hasattr(callback.message, 'edit_text'):
-        try:
-            await callback.message.edit_text(
-                cancel_text,
-                reply_markup=get_feedback_submitted_keyboard(),
-                parse_mode="HTML"
-            )
-        except Exception:
-            await callback.message.answer(
-                cancel_text,
-                reply_markup=get_feedback_submitted_keyboard(),
-                parse_mode="HTML"
-            )
-    elif callback.message:
+    # Всегда отправляем новое сообщение
+    if callback.message:
         await callback.message.answer(
             cancel_text,
             reply_markup=get_feedback_submitted_keyboard(),

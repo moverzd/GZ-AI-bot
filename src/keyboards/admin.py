@@ -27,12 +27,13 @@ def get_edit_field_keyboard(product_id: int) -> InlineKeyboardMarkup:
     """
     builder = InlineKeyboardBuilder()
     builder.button(text="Название", callback_data=f"field:name:{product_id}")
-    builder.button(text="Полное описание", callback_data=f"field:description:{product_id}")
+    builder.button(text="Описание", callback_data=f"field:description:{product_id}")
     builder.button(text="Преимущества", callback_data=f"field:advantages:{product_id}")
     builder.button(text="Расход", callback_data=f"field:notes:{product_id}")
     builder.button(text="⬅️ Вернуться в админ-меню", callback_data="admin:menu")
     builder.adjust(1)
     return builder.as_markup()
+
 
 def get_delete_confirm_keyboard(product_id: int) -> InlineKeyboardMarkup:
     """

@@ -63,7 +63,7 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
         try:
             await callback.message.edit_text(
                 "<b>➕📎 Добавление файлов к продукту</b>\n\n"
-                "Введите ID продукта, к которому хотите добавить файлы:\n"
+                "Введите ID продукта, к которому хотите добавить файлы:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -75,7 +75,7 @@ async def admin_add_files_callback(callback: types.CallbackQuery, state: FSMCont
             await callback.answer()
             await callback.message.answer(
                 "<b>➕📎 Добавление файлов к продукту</b>\n\n"
-                "Введите ID продукта, к которому хотите добавить файлы:\n"
+                "Введите ID продукта, к которому хотите добавить файлы:\n\n"
                 "💡 <i>ID продукта отображается в карточке продукта и результатах поиска</i>",
                 parse_mode="HTML",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -107,7 +107,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         if not product:
             await message.answer(
                 "❌ Продукт с таким ID не найден.\n\n"
-                "Попробуйте ещё раз:",
+                "Попробуйте ввести другой ID:",
                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                     types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
                 ]])
@@ -123,7 +123,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
             "Теперь отправьте файл, который хотите добавить к этому продукту.\n\n"
             "<b>Поддерживаемые форматы:</b>\n"
             "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
-            "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
+            "<b>Медиа:</b> изображения (JPG, PNG, JPEG), видео (MP4, AVI, MOV)",
             parse_mode="HTML",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
@@ -132,7 +132,7 @@ async def process_product_id_for_files(message: types.Message, state: FSMContext
         
     except ValueError:
         await message.answer(
-            "❌ Неверный формат ID продукта. Введите числовое значение:",
+            "❌ Неверный формат ID \n\nВведите число:\n",
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                 types.InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin:menu")
             ]])
@@ -227,7 +227,7 @@ async def process_unsupported_file(message: types.Message, state: FSMContext):
         "❌ <b>Неподдерживаемый тип файла</b>\n\n"
         "<b>Поддерживаемые форматы:</b>\n"
         "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
-        "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)\n\n"
+        "<b>Медиа:</b> изображения (JPG, PNG, JPEG), видео (MP4, AVI, MOV)\n\n"
         "Попробуйте загрузить файл другого формата:",
         parse_mode="HTML",
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
@@ -350,7 +350,7 @@ async def add_more_files_callback(callback: types.CallbackQuery, state: FSMConte
                 "Отправьте файл, который хотите добавить к этому продукту.\n\n"
                 "<b>Поддерживаемые форматы:</b>\n"
                 "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
-                "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
+                "<b>Медиа:</b> изображения (JPG, PNG, JPEG), видео (MP4, AVI, MOV)",
                 parse_mode="HTML"
             )
         except Exception:
@@ -361,7 +361,7 @@ async def add_more_files_callback(callback: types.CallbackQuery, state: FSMConte
                 "Отправьте файл, который хотите добавить к этому продукту.\n\n"
                 "<b>Поддерживаемые форматы:</b>\n"
                 "<b>Документы:</b> PDF, Word, Excel, PowerPoint, архивы\n"
-                "<b>Медиа:</b> изображения (JPG, PNG, GIF, WebP), видео (MP4, AVI, MOV, WMV, WebM)",
+                "<b>Медиа:</b> изображения (JPG, PNG, JPEG), видео (MP4, AVI, MOV)",
                 parse_mode="HTML"
             )
             return
@@ -373,8 +373,8 @@ async def return_to_admin_menu(callback: types.CallbackQuery):
     if callback.message and isinstance(callback.message, types.Message):
         try:
             await callback.message.edit_text(
-                "<b>🛠️ Панель Администратора</b>\n\n"
-                "Выберите действие:",
+                "<b>🛠️ Админ-меню по продукции/b>\n\n"
+                "📋 Выберите действие:",
                 parse_mode="HTML",
                 reply_markup=get_admin_main_menu_keyboard()
             )
@@ -382,8 +382,8 @@ async def return_to_admin_menu(callback: types.CallbackQuery):
             # Если не удается отредактировать (например, сообщение с медиа), отправляем новое
             await callback.answer()
             await callback.message.answer(
-                "<b>🛠️ Панель Администратора</b>\n\n"
-                "Выберите действие:",
+                "<b>🛠️ Админ-меню по продукции</b>\n\n"
+                "📋 Выберите действие:",
                 parse_mode="HTML",
                 reply_markup=get_admin_main_menu_keyboard()
             )

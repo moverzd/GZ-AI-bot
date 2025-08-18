@@ -30,7 +30,7 @@ def get_feedback_keyboard(message_id: int) -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="👍 Полезно",
+                text="👍 Помогло",
                 callback_data=f"feedback:like:{message_id}"
             ),
             InlineKeyboardButton(

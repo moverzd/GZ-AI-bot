@@ -97,8 +97,22 @@ async def process_search_query(message: types.Message, session: AsyncSession, st
         buttons.append([
             types.InlineKeyboardButton(
                 text=f"{product_name}",
-                # Используем короткий callback_data без запроса
-                callback_data=f"product:{product.id}:search"
+                # Включаем поисковый запрос в callback_data для возврата к результатам
+                callback_data=f"product:{product.id}:search:{query}"
+            )
+        ])
+    
+    # Добавляем кнопки навигации
+    buttons = []
+    for product in search_results[:10]:  # Показываем до 10 результатов
+        # Получаем название продукта и преобразуем в строку
+        product_name = str(product.name) if product.name is not None else "Без названия"
+        # Показываем полное название без сокращений
+        buttons.append([
+            types.InlineKeyboardButton(
+                text=f"{product_name}",
+                # Включаем поисковый запрос в callback_data для возврата к результатам
+                callback_data=f"product:{product.id}:search:{query}"
             )
         ])
     
@@ -259,8 +273,8 @@ async def back_to_search_results(callback: types.CallbackQuery, session: AsyncSe
         buttons.append([
             types.InlineKeyboardButton(
                 text=f"{product_name}",
-                # Используем короткий callback_data без запроса
-                callback_data=f"product:{product.id}:search"
+                # Включаем поисковый запрос в callback_data для возврата к результатам
+                callback_data=f"product:{product.id}:search:{query}"
             )
         ])
     
