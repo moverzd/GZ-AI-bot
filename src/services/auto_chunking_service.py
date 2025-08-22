@@ -329,6 +329,24 @@ class AutoChunkingService:
         return result
     
     async def _extract_text_from_file(self, file_path: str, max_pages: int = 30) -> str:
+        """Извлечение текста из файлов различных форматов: PDF, XLSX, CSV"""
+        file_extension = os.path.splitext(file_path)[1].lower()
+        
+        try:
+            if file_extension == '.pdf':
+                return await self._extract_text_from_pdf(file_path, max_pages)
+            elif file_extension in ['.xlsx', '.xls']:
+                return await self._extract_text_from_xlsx(file_path)
+            elif file_extension == '.csv':
+                return await self._extract_text_from_csv(file_path)
+            else:
+                logger.warning(f"Неподдерживаемый формат файла: {file_extension}")
+                return ""
+        except Exception as e:
+            logger.error(f"Ошибка при извлечении текста из {file_path}: {e}")
+            return ""
+    
+    async def _extract_text_from_pdf(self, file_path: str, max_pages: int = 30) -> str:
         """Извлечение текста из PDF файла"""
         try:
             import pdfplumber
@@ -344,7 +362,104 @@ class AutoChunkingService:
                 
                 return '\n\n'.join(pages_text)
         except Exception as e:
-            logger.error(f"Ошибка при извлечении текста из {file_path}: {e}")
+            logger.error(f"Ошибка при извлечении текста из PDF {file_path}: {e}")
+            return ""
+    
+    async def _extract_text_from_xlsx(self, file_path: str) -> str:
+        """Извлечение текста из Excel файла (.xlsx)"""
+        try:
+            import pandas as pd
+            
+            # Читаем все листы Excel файла
+            excel_file = pd.ExcelFile(file_path)
+            all_text = []
+            
+            for sheet_name in excel_file.sheet_names:
+                try:
+                    # Читаем лист
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    
+                    # Добавляем название листа как заголовок
+                    all_text.append(f"=== Лист: {sheet_name} ===")
+                    
+                    # Конвертируем DataFrame в текст
+                    # Заменяем NaN на пустые строки для лучшей читаемости
+                    df_filled = df.fillna('')
+                    
+                    # Добавляем заголовки столбцов
+                    if not df_filled.empty:
+                        headers = ' | '.join(str(col) for col in df_filled.columns)
+                        all_text.append(f"Столбцы: {headers}")
+                        
+                        # Добавляем строки данных
+                        for index, row in df_filled.iterrows():
+                            row_text = ' | '.join(str(val) for val in row.values if str(val).strip())
+                            if row_text.strip():  # Добавляем только непустые строки
+                                all_text.append(row_text)
+                    
+                    all_text.append("")  # Пустая строка между листами
+                    
+                except Exception as e:
+                    logger.warning(f"Ошибка при чтении листа '{sheet_name}' из файла {file_path}: {e}")
+                    continue
+            
+            result_text = '\n'.join(all_text)
+            logger.info(f"Извлечено {len(result_text)} символов из Excel файла {file_path}")
+            return result_text
+            
+        except Exception as e:
+            logger.error(f"Ошибка при извлечении текста из Excel файла {file_path}: {e}")
+            return ""
+    
+    async def _extract_text_from_csv(self, file_path: str) -> str:
+        """Извлечение текста из CSV файла"""
+        try:
+            import pandas as pd
+            
+            # Пробуем различные кодировки для CSV файлов
+            encodings_to_try = ['utf-8', 'windows-1251', 'cp1251', 'latin-1']
+            df = None
+            
+            for encoding in encodings_to_try:
+                try:
+                    df = pd.read_csv(file_path, encoding=encoding)
+                    logger.info(f"CSV файл {file_path} успешно прочитан с кодировкой {encoding}")
+                    break
+                except (UnicodeDecodeError, UnicodeError):
+                    continue
+                except Exception as e:
+                    logger.warning(f"Ошибка при чтении CSV с кодировкой {encoding}: {e}")
+                    continue
+            
+            if df is None:
+                logger.error(f"Не удалось прочитать CSV файл {file_path} ни с одной из кодировок")
+                return ""
+            
+            all_text = []
+            
+            # Добавляем информацию о файле
+            all_text.append(f"=== CSV файл: {os.path.basename(file_path)} ===")
+            
+            # Заменяем NaN на пустые строки
+            df_filled = df.fillna('')
+            
+            # Добавляем заголовки столбцов
+            if not df_filled.empty:
+                headers = ' | '.join(str(col) for col in df_filled.columns)
+                all_text.append(f"Столбцы: {headers}")
+                
+                # Добавляем строки данных
+                for index, row in df_filled.iterrows():
+                    row_text = ' | '.join(str(val) for val in row.values if str(val).strip())
+                    if row_text.strip():  # Добавляем только непустые строки
+                        all_text.append(row_text)
+            
+            result_text = '\n'.join(all_text)
+            logger.info(f"Извлечено {len(result_text)} символов из CSV файла {file_path}")
+            return result_text
+            
+        except Exception as e:
+            logger.error(f"Ошибка при извлечении текста из CSV файла {file_path}: {e}")
             return ""
     
     def _get_absolute_file_path(self, relative_path: str) -> str:

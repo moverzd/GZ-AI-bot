@@ -27,49 +27,47 @@ class FileService:
         self.auto_chunking_service = AutoChunkingService()
     
 
-    async def process_pdf_and_create_embeddings(self, product_id: int, product_name: str, product_dir: str):
+    async def process_documents_and_create_embeddings(self, product_id: int, product_name: str, product_dir: str):
         """
-        Обработка всех PDF файлов в директории, извлечение текста и создание эмбеддингов для продуктов
+        Обработка всех документов (PDF, XLSX, XLS, CSV) в директории, извлечение текста и создание эмбеддингов для продуктов
         """
         # Проверяем, что директория существует
         if not os.path.exists(product_dir):
             logger.error(f"Директория не существует: {product_dir}")
             return
             
-        # Пока что только pdf TODO: добавить xlxs
-        pdf_files = [f for f in os.listdir(product_dir) if f.endswith(".pdf")]
+        # Поддерживаемые расширения файлов
+        supported_extensions = [".pdf", ".xlsx", ".xls", ".csv"]
+        document_files = [f for f in os.listdir(product_dir) 
+                         if any(f.lower().endswith(ext) for ext in supported_extensions)]
         
-        if not pdf_files:
-            logger.info(f"В директории {product_dir} не найдено PDF-файлов")
+        if not document_files:
+            logger.info(f"В директории {product_dir} не найдено поддерживаемых файлов ({', '.join(supported_extensions)})")
             return
 
         # Инициализируем сервис автоматического чанкинга один раз для всех файлов
         await self.auto_chunking_service.initialize()
             
-        for file_name in pdf_files:
+        for file_name in document_files:
             file_path = os.path.join(product_dir, file_name)
             logger.info(f"Обрабатываем файл: {file_path}")
 
             try:
-                # Используем улучшенный метод извлечения текста без лимитов
-                from src.services.rag.pdf_extractor import extract_text_from_pdf
-                full_text = await extract_text_from_pdf(file_path, max_pages=None, max_length=None)
+                # Обрабатываем файл через автоматический чанкинг (поддерживает PDF, XLSX, XLS, CSV)
+                result = await self.auto_chunking_service.process_uploaded_file(
+                    product_id=product_id,
+                    product_name=product_name, 
+                    file_path=file_path,
+                    file_title=file_name
+                )
                 
-                logger.info(f"Текст из PDF ({file_name}, длина: {len(full_text)} символов): {full_text[:200]}...")
-                
-                # Обрабатываем файл через автоматический чанкинг
-                if full_text and len(full_text) > 100:  # Минимальная длина текста
-                    result = await self.auto_chunking_service.process_uploaded_file(
-                        product_id=product_id,
-                        product_name=product_name, 
-                        file_path=file_path,
-                        file_title=file_name
-                    )
-                    logger.info(f"Автоматический чанкинг для файла {file_name} завершен: {result}")
+                if result["success"]:
+                    logger.info(f"Автоматический чанкинг для файла {file_name} завершен успешно: создано {result['chunks_created']} чанков")
                 else:
-                    logger.warning(f"Пропускаем обработку {file_name}: текст слишком короткий или отсутствует")
+                    logger.warning(f"Ошибка при обработке файла {file_name}: {result.get('error', 'Неизвестная ошибка')}")
+                    
             except Exception as e:
-                logger.error(f"Ошибка при обработке PDF файла {file_path}: {e}")
+                logger.error(f"Ошибка при обработке файла {file_path}: {e}")
 
     async def save_product_image(self, product_id: int, file_id: str, is_main: bool = False) -> ProductFile:
         """
@@ -111,9 +109,10 @@ class FileService:
             local_path = local_path
         )
 
-        if local_path and local_path.endswith('.pdf'):
+        # Проверяем, поддерживается ли файл для автоматической индексации
+        if local_path and any(local_path.lower().endswith(ext) for ext in ['.pdf', '.xlsx', '.xls', '.csv']):
             product_name = title if title else f"Продукт {product_id}"
-            await self.process_pdf_and_create_embeddings(product_id,product_name,os.path.dirname(local_path))
+            await self.process_documents_and_create_embeddings(product_id, product_name, os.path.dirname(local_path))
         
         return saved_file
     
@@ -164,8 +163,15 @@ class FileService:
             original_filename=original_filename
         )
         
-        # Автоматическое создание эмбеддингов с чанкингом для PDF файлов
-        if local_path and mime_type == 'application/pdf':
+        # Автоматическое создание эмбеддингов с чанкингом для PDF, XLSX и CSV файлов
+        supported_mime_types = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',  # .xlsx
+            'application/vnd.ms-excel',  # .xls
+            'text/csv'  # .csv
+        ]
+        
+        if local_path and mime_type in supported_mime_types:
             try:
                 # Получаем название продукта
                 from src.database.models import Product
@@ -182,7 +188,7 @@ class FileService:
                     else:
                         absolute_path = os.path.join(DOWNLOAD_FOLDER, local_path)
                     
-                    logger.info(f"[FileService] Запускаем автоматический чанкинг для файла {absolute_path}")
+                    logger.info(f"[FileService] Запускаем автоматический чанкинг для файла {absolute_path} (тип: {mime_type})")
                     
                     # Создаем эмбеддинги с чанкингом
                     chunking_result = await self.auto_chunking_service.process_uploaded_file(
